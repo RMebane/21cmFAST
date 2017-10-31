@@ -34,7 +34,6 @@ OBJ_FILES = init \
   boxcar_smooth_field \
   Ts \
   drive_zscroll_noTs \
-  drive_xHIscroll \
   kSZ_power \
   find_halos \
   update_halo_pos \
@@ -66,12 +65,6 @@ drive_zscroll_noTs: drive_zscroll_noTs.c \
 	${COSMO_FILES} \
 
 	${CC} ${CPPFLAGS} -o drive_zscroll_noTs drive_zscroll_noTs.c ${LDFLAGS}
-
-
-drive_xHIscroll: drive_xHIscroll.c \
-	${COSMO_FILES} \
-
-	${CC} ${CPPFLAGS} -o drive_xHIscroll drive_xHIscroll.c ${LDFLAGS}
 
 
 init:	init.c \
