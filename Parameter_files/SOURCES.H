@@ -88,7 +88,7 @@ double massFuncInt(double lnM, void *params)
 double ionEff(double z, sources s)
 {
     double mMinII, mMinIII, A_He, rel_tol, lower_limit, upper_limit;
-    double resultEff, resultMf, error;
+    double resultEff, resultMf, error, test;
     gsl_function F;
 
     rel_tol = 0.001;
