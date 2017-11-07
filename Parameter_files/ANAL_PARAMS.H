@@ -39,7 +39,7 @@
   Have to set SHARP_CUTOFF = 1 for now
   -RM
 */
-#define USE_GENERAL_SOURCES (int) (0)
+#define USE_GENERAL_SOURCES (int) (1)
 
 /*
   This version still keeps support for the constant ionizing efficiency with sharp cut-off for minimum halo mass.

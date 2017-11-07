@@ -1,5 +1,6 @@
 #include "bubble_helper_progs.c"
 #include "heating_helper_progs.c"
+#include "../Parameter_files/SOURCES.H"
 
 /*
   USAGE: find_HII_bubbles [-p <num of processors>] <redshift> [<previous redshift>]
@@ -280,7 +281,7 @@ int main(int argc, char ** argv){
 
   // compute ION_EFF_FACTOR if we are using sources defined in SOURCES.H - RM
 
-  if (USE_GENERAL_SOURCES) ION_EFF_FACTOR = ionEFF(REDSHIFT, src);
+  if (USE_GENERAL_SOURCES) ION_EFF_FACTOR = ionEff(REDSHIFT, src);
 
   // Set the minimum halo mass hosting ionizing source mass.
   // For constant ionizing efficiency parameter M_MIN is set to be M_TURN which is a sharp cut-off.
@@ -297,9 +298,9 @@ int main(int argc, char ** argv){
   // Set minimum mass if we are using sources defined in SOURCES.H - RM
   if (USE_GENERAL_SOURCES)
   {
-      if(s.minMassIII(REDSHIFT) > s.minMass(REDSHIFT) 
-         || s.minMassIII(REDSHIFT) < 0) M_MIN = s.minMass(REDSHIFT);
-      else M_MIN = s.minMassIII(REDSHIFT);
+      if(src.minMassIII(REDSHIFT) > src.minMass(REDSHIFT) 
+         || src.minMassIII(REDSHIFT) < 0) M_MIN = src.minMass(REDSHIFT);
+      else M_MIN = src.minMassIII(REDSHIFT);
   }
 
 

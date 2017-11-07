@@ -27,7 +27,6 @@
 #include <gsl/gsl_errno.h>
 #include "COSMOLOGY.H"
 
-
 /******** BEGIN USER CHANGABLE DEFINITIONS   **********/
 #define RANDOM_SEED (long) (1) // seed for the random number generator
 #define BOX_LEN (float) 250 // in Mpc
