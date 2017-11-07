@@ -206,6 +206,10 @@ int main(int argc, char ** argv){
   const float dz = 0.01;
   *error_message = '\0';
 
+  // Initializtion of source structure - RM
+  sources src;
+  src = defaultSources();
+
   int HALO_MASS_DEPENDENT_IONIZING_EFFICIENCY = 0;
   
   double aveR = 0;
@@ -274,6 +278,10 @@ int main(int argc, char ** argv){
   else
     ION_EFF_FACTOR = N_GAMMA_UV * STELLAR_BARYON_FRAC * ESC_FRAC; // Constant ionizing efficiency parameter.
 
+  // compute ION_EFF_FACTOR if we are using sources defined in SOURCES.H - RM
+
+  if (USE_GENERAL_SOURCES) ION_EFF_FACTOR = ionEFF(REDSHIFT, src);
+
   // Set the minimum halo mass hosting ionizing source mass.
   // For constant ionizing efficiency parameter M_MIN is set to be M_TURN which is a sharp cut-off.
   // For the new parametrization the number of halos hosting active galaxies (i.e. the duty cycle) is assumed to
@@ -285,6 +293,16 @@ int main(int argc, char ** argv){
   else {
     M_MIN = M_TURNOVER;
   }
+
+  // Set minimum mass if we are using sources defined in SOURCES.H - RM
+  if (USE_GENERAL_SOURCES)
+  {
+      if(s.minMassIII(REDSHIFT) > s.minMass(REDSHIFT) 
+         || s.minMassIII(REDSHIFT) < 0) M_MIN = s.minMass(REDSHIFT);
+      else M_MIN = s.minMassIII(REDSHIFT);
+  }
+
+
   // check for WDM
   if (P_CUTOFF && ( M_MIN < M_J_WDM())){
     fprintf(stderr, "The default Jeans mass of %e Msun is smaller than the scale supressed by the effective pressure of WDM.\n", M_MIN);

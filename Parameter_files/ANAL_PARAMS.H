@@ -36,6 +36,7 @@
 
 /*
   Use the generalized source presciptions in SOURCES.H if 1
+  Have to set SHARP_CUTOFF = 1 for now
   -RM
 */
 #define USE_GENERAL_SOURCES (int) (0)
@@ -44,7 +45,7 @@
   This version still keeps support for the constant ionizing efficiency with sharp cut-off for minimum halo mass.
   If SHARP_CUTOFF = 1, use the constant ionizing efficency parameter with sharp cut-off.
 */
-#define SHARP_CUTOFF (int) (0) 
+#define SHARP_CUTOFF (int) (1) 
 
 /*
   Maximum horizon for ionizing photons, in comoving Mpc.

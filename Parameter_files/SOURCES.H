@@ -26,6 +26,18 @@ struct parameters_gsl_ionEff_int_{
     double z;
 };
 
+// atomic cooling threshold
+// used for min mass comparisons
+
+1.22
+
+double minMassATC(double z)
+{
+    double mu;
+    mu = 1.22;
+    return (double) TtoM(z, 1.0e4, mu);
+}
+
 // initialize source struct
 // if not using Pop III stars, make minMassIII(z) = -1
 sources setSources(double (*fesc)(double, double),
@@ -122,6 +134,24 @@ double ionEff(double z, sources s)
     gsl_integration_workspace_free(w);
 
     return resultEff / resultMf;
+}
+
+// BEGIN SPECIFIC SOURCE FUNCTIONS
+
+double fescDef(double z, double M) return 0.1 * pow(M / 1.0e10, -0.4);
+double fescIIIDef(double z, double M) return 0.1;
+double NionDef(double z, double M) return 5000.0;
+double NionIIIDef(double z, double M) return 40000.0;
+double fstarDef(double z, double M) return 0.03 * pow(M / 1.0e10, 0.4);
+double fstarIIIDef(double z, double M) return 1.0e-4;
+double minMassIIIDef(double z) return minMassATC(z) / 10.0;
+
+sources defaultSources()
+{
+    sources s;
+    s = setSources(fescDef, fescIIIDef, NionDef, NionIIIDef, 
+                   fstarDef, fstarIIIDef, minMassATC, minMassIIIDef);
+    return s;
 }
 
 
