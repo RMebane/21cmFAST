@@ -143,13 +143,14 @@ double NionDef(double z, double M) {return 5000.0;}
 double NionIIIDef(double z, double M) {return 40000.0;}
 double fstarDef(double z, double M) {return 0.03 * pow(M / 1.0e10, 0.4);}
 double fstarIIIDef(double z, double M) {return 1.0e-4;}
-double minMassIIIDef(double z) {return minMassATC(z) / 10.0;}
+double minMassIIIDef(double z) {return -1;}//{return minMassATC(z) / 10.0;}
+double minMassDef(double z) {return 1.0e8;}
 
 sources defaultSources()
 {
     sources s;
     s = setSources(fescDef, fescIIIDef, NionDef, NionIIIDef, 
-                   fstarDef, fstarIIIDef, minMassATC, minMassIIIDef);
+                   fstarDef, fstarIIIDef, minMassDef, minMassIIIDef);
     return s;
 }
 
