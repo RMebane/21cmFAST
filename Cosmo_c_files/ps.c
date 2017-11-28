@@ -57,7 +57,7 @@ static gsl_spline *Fcoll_spline;
 
 /* New in v1.4 - part 2 of 4: begin */
 static double log10_overdense_spline_SFR[NSFR_low], log10_Fcoll_spline_SFR[NSFR_low];
-static gsl_interp_accel *FcollLow_spline_acc;//[num_threads];
+static gsl_interp_accel *FcollLow_spline_acc;
 static gsl_spline *FcollLow_spline;
 
 void initialiseGL_FcollSFR(int n, float M_TURN, float M_Max);
@@ -66,7 +66,7 @@ void initialiseFcollSFR_spline(float z, float Mmax, float MassTurnover, float Al
 
 float Mass_limit (float logM, float PL, float FRAC);
 void bisection(float *x, float xlow, float xup, int *iter);
-float Mass_limit_bisection(float Mmin, float PL, float FRAC);
+float Mass_limit_bisection(float Mmin, float Mmax, float PL, float FRAC);
 
     /* For Ts.c: being under development below this line */
 static double z_val[zpp_interp_points],Fcollz_val[zpp_interp_points]; // For Ts.c
@@ -75,22 +75,15 @@ static gsl_interp_accel *Fcollz_spline_acc;
 static gsl_spline *Fcollz_spline;
 static gsl_interp_accel *FcollzX_spline_acc;
 static gsl_spline *FcollzX_spline;
-void initialise_FgtrM_st_SFR_spline(int Nbin, float zmin, float zmax, float MassTurn, float Alpha_star, float Alpha_esc, float Fstar10, float Fesc10, float Mlim_Fstar, float Mlim_Fesc);
+void initialise_FgtrM_st_SFR_spline(int Nbin, float zmin, float zmax, float MassTurn, float Alpha_star, float Alpha_esc, float Fstar10, float Fesc10);
 void FgtrM_st_SFR_z(float z, float *splined_value);
-void initialise_Xray_FgtrM_st_SFR_spline(int Nbin, float zmin, float zmax, float MassTurn, float Alpha_star, float Fstar10, float Mlim_Fstar);
+void initialise_Xray_FgtrM_st_SFR_spline(int Nbin, float zmin, float zmax, float MassTurn, float Alpha_star, float Fstar10);
 void FgtrM_st_SFR_X_z(float z, float *splined_value);
 float *zpp_table;
-double *log10_overdense_low_table, ***log10_Fcollz_SFR_low_table;
-float *Overdense_high_table, ***Fcollz_SFR_high_table;
-float *second_derivs_Fcoll_z1, *second_derivs_Fcoll_z2;
-static gsl_interp_accel *FcollLow_z1_spline_acc;
-static gsl_spline *FcollLow_z1_spline;
-static gsl_interp_accel *FcollLow_z2_spline_acc;
-static gsl_spline *FcollLow_z2_spline;
-void initialise_Xray_Fcollz_SFR_Conditional_table(int n, float z[], double R[], float MassTurnover, float Alpha_star, float Fstar10, float Mlim_Fstar);
+double *log10_overdense_low_table, **log10_Fcollz_SFR_low_table;
+float *Overdense_high_table, **Fcollz_SFR_high_table;
+void initialise_Xray_Fcollz_SFR_Conditional_table(int Nsteps_zp, int Nfilter, float z[], double R[], float MassTurnover, float Alpha_star, float Fstar10);
 void initialise_Xray_Fcollz_SFR_Conditional(int R_ct, int zp_int1, int zp_int2);
-void FcollzX_Spline_SFR(int R_ct, int zp_int1, int zp_int2, float Overdensity, float grad1, float grad2, float *splined_value);
-void init_interpolation();
 void free_interpolation();
     /* For Ts.c: being under development above this line */
 
@@ -202,32 +195,17 @@ double get_M_min_ion(float z);
 double get_M_min_ion(float z){
   double MMIN;
 
-  //MMIN = M_TURNOVER;
-  MMIN = 1e8; // To test I set MMIN=1e8, because I set M_TURNOVER = 0.
+  MMIN = M_TURNOVER;
 
   // check for WDM
   if (P_CUTOFF && ( MMIN < M_J_WDM()))
     MMIN = M_J_WDM();
-  //  printf("Mmin is %e\n", MMIN);
   return MMIN;
 }
 
 /* Returns the minimum source mass for x-ray sources, according to user specifications */
 double get_M_min_xray(float z){
-  double MMIN;
-
-  MMIN = M_TURNOVER;
-
-  if (X_RAY_Tvir_MIN < 9.99999e3) //neutral IGM
-    MMIN = TtoM(z, X_RAY_Tvir_MIN, 1.22);
-  else // ionized IGM
-    MMIN = TtoM(z, X_RAY_Tvir_MIN, 0.6);
-
-  // check for WDM
-  if (P_CUTOFF && ( MMIN < M_J_WDM()))
-    MMIN = M_J_WDM();
-  //  printf("Mmin is %e\n", MMIN);
-  return MMIN;
+  return get_M_min_ion(z);
 }
 
 
@@ -364,7 +342,7 @@ double dNdM_st(double z, double M){
   sigma = sigma_z0(M) * dicke_growth;
   dsigmadm = dsigmasqdm_z0(M) * dicke_growth*dicke_growth/(2.0*sigma);
   nuhat = sqrt(SHETH_a) * Deltac / sigma;
-
+  
   return (-OMm*RHOcrit/M) * (dsigmadm/sigma) * sqrt(2/PI)*SHETH_A * (1+ pow(nuhat, -2*SHETH_p)) * nuhat * pow(E, -nuhat*nuhat/2.0);
 }
 
@@ -1196,13 +1174,13 @@ void bisection(float *x, float xlow, float xup, int *iter){
     ++(*iter);
 }
 
-float Mass_limit_bisection(float Mmin, float PL, float FRAC){
+float Mass_limit_bisection(float Mmin, float Mmax, float PL, float FRAC){
   int i, iter, max_iter=200;
   float rel_tol=0.001;
   float logMlow, logMupper, x, x1;
   iter = 0;
-  logMlow = log10(Mmin/50.);
-  logMupper = log10(1e16);
+  logMlow = log10(Mmin);
+  logMupper = log10(Mmax);
   
   if (PL < 0.) {
     if (Mass_limit(logMlow,PL,FRAC) < 1.) {
@@ -1211,7 +1189,7 @@ float Mass_limit_bisection(float Mmin, float PL, float FRAC){
   }
   else if (PL > 0.) {
     if (Mass_limit(logMupper,PL,FRAC) < 1.) {
-      return 1e16;
+      return Mmax;
     }
   }
   else
@@ -1259,8 +1237,6 @@ double dFdlnM_st_SFR(double lnM, void *params){
 		Fstar = 1./Fstar10;
 	else if (Alpha_star < 0. && M < Mlim_Fstar)
 		Fstar = 1/Fstar10;
-	else if (Mlim_Fstar == 0.)
-		Fstar = pow(M/1e10,Alpha_star);
 	else
 		Fstar = pow(M/1e10,Alpha_star);
 
@@ -1268,11 +1244,8 @@ double dFdlnM_st_SFR(double lnM, void *params){
 		Fesc = 1./Fesc10;
 	else if (Alpha_esc < 0. && M < Mlim_Fesc)
 		Fesc = 1./Fesc10;
-	else if (Mlim_Fesc == 0.)
-		Fesc = pow(M/1e10,Alpha_esc);
 	else
 		Fesc = pow(M/1e10,Alpha_esc);
-
     return dNdM_st(z,M) * M * M * exp(-MassTurnover/M) * Fstar * Fesc;
 }
 
@@ -1300,7 +1273,6 @@ double FgtrM_st_SFR(double z, double MassTurnover, double Alpha_star, double Alp
     F.params = &parameters_gsl_SFR;
     lower_limit = log(M_Min);
     upper_limit = log(FMAX(1e16, M_Min*100));
-	//printf(" IN FgtrM_st_SFR: z = %.4f Mmin = %.4e, Mmax = %.4e\n",z,lower_limit, upper_limit);
 
     gsl_integration_qag (&F, lower_limit, upper_limit, 0, rel_tol,
                         1000, GSL_INTEG_GAUSS61, w, &result, &error);
@@ -1338,17 +1310,13 @@ float FgtrConditionallnM_GL_SFR(float lnM, struct parameters_gsl_SFR_con_int_ pa
 		Fstar = 1./Fstar10;
 	else if (Alpha_star < 0. && M < Mlim_Fstar)
 		Fstar = 1./Fstar10;
-	else if (Mlim_Fstar == 0.)
-		Fstar = pow(M/1e10,Alpha_star);
 	else
 		Fstar = pow(M/1e10,Alpha_star);
 
 	if (Alpha_esc > 0. && M > Mlim_Fesc)
 		Fesc = 1./Fesc10;
-	else if (Alpha_star < 0. && M < Mlim_Fesc)
+	else if (Alpha_esc < 0. && M < Mlim_Fesc)
 		Fesc = 1./Fesc10;
-	else if (Mlim_Fesc == 0.)
-		Fesc = pow(M/1e10,Alpha_esc);
 	else
 		Fesc = pow(M/1e10,Alpha_esc);
 
@@ -1412,18 +1380,14 @@ double dFgtrConditionallnM_SFR(double lnM, void *params) {
 		Fstar = 1./Fstar10;
 	else if (Alpha_star < 0. && M < Mlim_Fstar)
 		Fstar = 1./Fstar10;
-	else if (Mlim_Fstar == 0.)
-		Fstar = pow(M/1e10,Alpha_star);
 	else
 		Fstar = pow(M/1e10,Alpha_star);
 
 	if (Alpha_esc > 0. && M > Mlim_Fesc)
 		Fesc = 1./Fesc10;
-	else if (Alpha_star < 0. && M < Mlim_Fesc)
+	else if (Alpha_esc < 0. && M < Mlim_Fesc)
 		Fesc = 1./Fesc10;
-	else if (Mlim_Fesc == 0.)
-		Fesc = pow(M/1e10,Alpha_esc);
-	else
+	else 
 		Fesc = pow(M/1e10,Alpha_esc);
 
     return M*exp(-MassTurnover/M)*Fstar*Fesc*dNdM_conditional_second(z,log(M),M2,del1,del2)/sqrt(2.*PI);
@@ -1536,9 +1500,13 @@ void FcollSpline_SFR(float Overdensity, float *splined_value){
 }
 
   // For Ts.c : The functions below this line are under development.
-void initialise_FgtrM_st_SFR_spline(int Nbin, float zmin, float zmax, float MassTurn, float Alpha_star, float Alpha_esc, float Fstar10, float Fesc10, float Mlim_Fstar, float Mlim_Fesc){
+void initialise_FgtrM_st_SFR_spline(int Nbin, float zmin, float zmax, float MassTurn, float Alpha_star, float Alpha_esc, float Fstar10, float Fesc10){
 	int i;
-	float Mmin;
+	float Mmin = MassTurn/50., Mmax = 1e16;
+	float Mlim_Fstar, Mlim_Fesc;
+
+	Mlim_Fstar = Mass_limit_bisection(Mmin, Mmax, Alpha_star, Fstar10);
+	Mlim_Fesc = Mass_limit_bisection(Mmin, Mmax, Alpha_esc, Fesc10);
 
 	Fcollz_spline_acc = gsl_interp_accel_alloc ();
 	Fcollz_spline = gsl_spline_alloc (gsl_interp_cspline, Nbin);
@@ -1556,9 +1524,12 @@ void FgtrM_st_SFR_z(float z, float *splined_value){
 	*splined_value = returned_value;
 }
 
-void initialise_Xray_FgtrM_st_SFR_spline(int Nbin, float zmin, float zmax, float MassTurn, float Alpha_star, float Fstar10, float Mlim_Fstar){
+void initialise_Xray_FgtrM_st_SFR_spline(int Nbin, float zmin, float zmax, float MassTurn, float Alpha_star, float Fstar10){
 	int i;
-	float Mmin;
+	float Mmin = MassTurn/50., Mmax = 1e16;
+	float Mlim_Fstar;
+
+	Mlim_Fstar = Mass_limit_bisection(Mmin, Mmax, Alpha_star, Fstar10);
 
 	FcollzX_spline_acc = gsl_interp_accel_alloc ();
 	FcollzX_spline = gsl_spline_alloc (gsl_interp_cspline, Nbin);
@@ -1576,113 +1547,58 @@ void FgtrM_st_SFR_X_z(float z, float *splined_value){
 	*splined_value = returned_value;
 }
 
-void initialise_Xray_Fcollz_SFR_Conditional_table(int n, float z[], double R[], float MassTurnover, float Alpha_star, float Fstar10, float Mlim_Fstar){
+
+void initialise_Xray_Fcollz_SFR_Conditional_table(int Nsteps_zp, int Nfilter, float z[], double R[], float MassTurnover, float Alpha_star, float Fstar10){
     double overdense_val;
     double overdense_large_high = Deltac, overdense_large_low = 1.5;
     double overdense_small_high = 1.5, overdense_small_low = -1. + 9e-8;
-	double Mmin,Mmax;
-    int i,j,k;
-    int Nfilter = n;
+	double overdense_low_table[NSFR_low];
+	float Mmin,Mmax,Mlim_Fstar;
+    int i,j,k,i_tot;
+    //int Nfilter = n;
 
-    //Mmin = 1e8; // Test. Once the code works, delete this line.
     Mmin = MassTurnover/50; 
-    initialiseSplinedSigmaM(Mmin,RtoM(R[Nfilter-1]));
-	printf(" In initialise_Fcollz_SFR_Conditional_table: Rmin = %6.4f, Rmax = %6.4f, Mmin = %.4e, Mmax = %.4e\n",
+	Mmax = RtoM(R[Nfilter-1]);
+	Mlim_Fstar = Mass_limit_bisection(Mmin, Mmax, Alpha_star, Fstar10);
+    initialiseSplinedSigmaM(Mmin,Mmax);
+    fprintf(stderr, "In initialise_Fcollz_SFR_Conditional_table: Rmin = %6.4f, Rmax = %6.4f, Mmin = %.4e, Mmax = %.4e\n",
 																R[0],R[Nfilter-1],RtoM(R[0]),RtoM(R[Nfilter-1]));
     for (i=0; i<NSFR_low; i++) {
       overdense_val = log10(1. + overdense_small_low) + (double)i/((double)NSFR_low-1.)*(log10(1.+overdense_small_high)-log10(1.+overdense_small_low));
       log10_overdense_low_table[i] = overdense_val;
+	  overdense_low_table[i] = pow(10.,log10_overdense_low_table[i]);
     }
     for (i=0; i<NSFR_high;i++) {
       Overdense_high_table[i] = overdense_large_low + (float)i/((float)NSFR_high-1.)*(overdense_large_high - overdense_large_low);
     }
-    printf("Nfilter = %d\n",Nfilter);
-    for (k=0; k<Nfilter; k++) {
-      printf("R filter = %d\n",k);
-      Mmax = RtoM(R[k]);
-      for (j=0; j<zpp_interp_points; j++) {
+    //    printf("Nfilter = %d\n",Nfilter);
+    for (k=0; k < Nsteps_zp; k++) {
+	  i_tot = Nfilter*k;
+      printf("zp step = %d\n",k); //TEST
+      //printf("R filter = %d\n",k);
+      //Mmax = RtoM(R[k]);
+      for (j=0; j < Nfilter; j++) {
+        Mmax = RtoM(R[j]);
         initialiseGL_FcollSFR(NGL_SFR, Mmin, Mmax);
         for (i=0; i<NSFR_low; i++){
-            log10_Fcollz_SFR_low_table[k][j][i] = log10(GaussLegendreQuad_FcollSFR(NGL_SFR,z[j],log(Mmax),Deltac,pow(10.,log10_overdense_low_table[i])-1.,MassTurnover,Alpha_star,0.,Fstar10,1.,Mlim_Fstar,0.));
-            if(log10_Fcollz_SFR_low_table[k][j][i] < -40.) log10_Fcollz_SFR_low_table[k][j][i] = -40.;
+            log10_Fcollz_SFR_low_table[i_tot+j][i] = log10(GaussLegendreQuad_FcollSFR(NGL_SFR,z[i_tot+j],log(Mmax),Deltac,overdense_low_table[i]-1.,MassTurnover,Alpha_star,0.,Fstar10,1.,Mlim_Fstar,0.));
+            if(log10_Fcollz_SFR_low_table[i_tot+j][i] < -40.) log10_Fcollz_SFR_low_table[i_tot+j][i] = -40.;
+		    //if(i==0)printf("zp_step=%d, filter_step=%d, arr=%d\n",k, j,i_tot+j); //TEST
         }
 
         for(i=0;i<NSFR_high;i++) {
-            Fcollz_SFR_high_table[k][j][i] = FgtrConditionalM_SFR(z[j],log(Mmin),log(Mmax),Deltac,Overdense_high_table[i],MassTurnover,Alpha_star,0.,Fstar10,1.,Mlim_Fstar,0.);
-            if(Fcollz_SFR_high_table[k][j][i]<0.) Fcollz_SFR_high_table[k][j][i]=pow(10.,-40.0);
+            Fcollz_SFR_high_table[i_tot+j][i] = FgtrConditionalM_SFR(z[i_tot+j],log(Mmin),log(Mmax),Deltac,Overdense_high_table[i],MassTurnover,Alpha_star,0.,Fstar10,1.,Mlim_Fstar,0.);
+            if(Fcollz_SFR_high_table[i_tot+j][i]<0.) Fcollz_SFR_high_table[i_tot+j][i]=pow(10.,-40.0);
         }
       }
     }
 }
 
-void initialise_Xray_Fcollz_SFR_Conditional(int R_ct, int zp_int1, int zp_int2){
-
-    // low overdensity: delta < 1.5
-    FcollLow_z1_spline_acc = gsl_interp_accel_alloc ();
-    FcollLow_z1_spline = gsl_spline_alloc (gsl_interp_cspline, NSFR_low);
-    gsl_spline_init(FcollLow_z1_spline, log10_overdense_low_table, log10_Fcollz_SFR_low_table[R_ct][zp_int1], NSFR_low);
-
-    FcollLow_z2_spline_acc = gsl_interp_accel_alloc ();
-    FcollLow_z2_spline = gsl_spline_alloc (gsl_interp_cspline, NSFR_low);
-    gsl_spline_init(FcollLow_z2_spline, log10_overdense_low_table, log10_Fcollz_SFR_low_table[R_ct][zp_int2], NSFR_low);
-
-    // high overdensity: delta > 1.5
-    spline(Overdense_high_table-1,Fcollz_SFR_high_table[R_ct][zp_int1]-1,NSFR_high,0,0,second_derivs_Fcoll_z1-1);
-    spline(Overdense_high_table-1,Fcollz_SFR_high_table[R_ct][zp_int2]-1,NSFR_high,0,0,second_derivs_Fcoll_z2-1);
-}
-
-void FcollzX_Spline_SFR(int R_ct, int zp_int1, int zp_int2, float Overdensity, float grad1, float grad2, float *splined_value){
-    int i;
-    float fcoll1, fcoll2, returned_value;
-
-    if (Overdensity < 1.5){
-      if (Overdensity < -1.) {
-        fcoll1 = 0;
-        fcoll2 = 0;
-      }
-      else {
-        fcoll1 = gsl_spline_eval(FcollLow_z1_spline, log10(Overdensity+1.), FcollLow_z1_spline_acc);
-        fcoll2 = gsl_spline_eval(FcollLow_z2_spline, log10(Overdensity+1.), FcollLow_z2_spline_acc);
-        fcoll1 = pow(10., fcoll1);
-        fcoll2 = pow(10., fcoll2);
-      }
-    }
-    else {
-      if (Overdensity < 0.99*Deltac) {
-        // Usage of 0.99*Deltac arises due to the fact that close to the critical density, the collapsed fraction becomes a little unstable
-        // However, such densities should always be collapsed, so just set f_coll to unity. 
-        // Additionally, the fraction of points in this regime relative to the entire simulation volume is extremely small.
-        splint(Overdense_high_table-1,Fcollz_SFR_high_table[R_ct][zp_int1]-1,second_derivs_Fcoll_z1-1,NSFR_high,Overdensity,&(fcoll1));
-        splint(Overdense_high_table-1,Fcollz_SFR_high_table[R_ct][zp_int2]-1,second_derivs_Fcoll_z2-1,NSFR_high,Overdensity,&(fcoll2));
-        }
-      else {
-        fcoll1 = 1.;
-        fcoll2 = 1.;
-      }
-    }
-
-    returned_value = fcoll1*grad1 + fcoll2*grad2;
-    //printf("delta = %.4f, fcoll1 = %.4e, fcoll2 = %.4e\n",Overdensity,fcoll1,fcoll2);
-    if (returned_value > 1.) returned_value = 1.;
-    *splined_value = returned_value;
-}
-void init_interpolation() {
-	second_derivs_Fcoll_z1 = calloc(NSFR_high,sizeof(float));
-	second_derivs_Fcoll_z2 = calloc(NSFR_high,sizeof(float));
-}
 void free_interpolation() {
-    gsl_spline_free (FcollLow_z1_spline);
-    gsl_interp_accel_free (FcollLow_z1_spline_acc);
-    gsl_spline_free (FcollLow_z2_spline);
-    gsl_interp_accel_free (FcollLow_z2_spline_acc);
-    free(second_derivs_Fcoll_z1);
-    free(second_derivs_Fcoll_z2);
-
     gsl_spline_free (FcollzX_spline);
     gsl_interp_accel_free (FcollzX_spline_acc);
     gsl_spline_free (Fcollz_spline);
     gsl_interp_accel_free (Fcollz_spline_acc);
-
 }
 // For Ts.c : The functions above this line are under development.
 

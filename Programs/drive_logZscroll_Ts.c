@@ -17,7 +17,8 @@
 #define ZHIGH  Z_HEAT_MAX
 
 int main(int argc, char ** argv){
-  float Z, M, M_MIN, nf;
+  //float Z, M, M_MIN, nf;
+  float Z, M, nf;
   char cmnd[1000];
   FILE *LOG;
   time_t start_time, curr_time;
@@ -38,6 +39,16 @@ int main(int argc, char ** argv){
   system("mkdir ../Output_files/Deldel_T_power_spec");
   system("mkdir ../Redshift_interpolate_filelists");
   //  system("mkdir ../Lighttravel_filelists");
+
+  // remove some of the previous (astro) files which might conflict with current run
+  system("rm ../Boxes/Ts_evolution/*");
+  system("rm ../Boxes/Ts_*");
+  system("rm ../Boxes/delta_T_*");
+  system("rm ../Boxes/xH_*");
+  system("rm ../Boxes/Nrec_*");
+  system("rm ../Boxes/z_first*");
+  system("rm ../Output_files/Deldel_T_power_spec/*");  
+
   init_ps();
 
   // open log file
@@ -57,12 +68,12 @@ int main(int argc, char ** argv){
 
    // call Ts on the lowest redshift
   if (USE_TS_IN_21CM){
-    sprintf(cmnd, "./perturb_field %.2f", Z);
-    time(&curr_time);
-    fprintf(stderr, "Now calling: %s, %g min have ellapsed\n", cmnd, -difftime(start_time, curr_time)/60.0);
-    fprintf(LOG, "Now calling: %s, %g min have ellapsed\n", cmnd, -difftime(start_time, curr_time)/60.0);
-    fflush(NULL);
-    system(cmnd);
+    //sprintf(cmnd, "./perturb_field %.2f", Z);
+    //time(&curr_time);
+    //fprintf(stderr, "Now calling: %s, %g min have ellapsed\n", cmnd, -difftime(start_time, curr_time)/60.0);
+    //fprintf(LOG, "Now calling: %s, %g min have ellapsed\n", cmnd, -difftime(start_time, curr_time)/60.0);
+    //fflush(NULL);
+    //system(cmnd);
     
     sprintf(cmnd, "./Ts %.2f", Z);
     time(&curr_time);
@@ -81,7 +92,7 @@ int main(int argc, char ** argv){
   while (Z >= ZLOW){
 
     //set the minimum source mass
-    M_MIN = get_M_min_ion(Z);
+    //M_MIN = get_M_min_ion(Z);
 
     // if USE_HALO_FIELD is turned on in ANAL_PARAMS.H, run the halo finder
     if (USE_HALO_FIELD){
@@ -105,12 +116,12 @@ int main(int argc, char ** argv){
     }
 
     // shift density field and update velocity field
-    sprintf(cmnd, "./perturb_field %.2f", Z);
-    time(&curr_time);
-    fprintf(stderr, "Now calling: %s, %g min have ellapsed\n", cmnd, -difftime(start_time, curr_time)/60.0);
-    fprintf(LOG, "Now calling: %s, %g min have ellapsed\n", cmnd, -difftime(start_time, curr_time)/60.0);
-    fflush(NULL);
-    system(cmnd);
+    //sprintf(cmnd, "./perturb_field %.2f", Z);
+    //time(&curr_time);
+    //fprintf(stderr, "Now calling: %s, %g min have ellapsed\n", cmnd, -difftime(start_time, curr_time)/60.0);
+    //fprintf(LOG, "Now calling: %s, %g min have ellapsed\n", cmnd, -difftime(start_time, curr_time)/60.0);
+    //fflush(NULL);
+    //system(cmnd);
     // end of solely redshift dependent things, now do ionization stuff
 
 
@@ -203,6 +214,18 @@ int main(int argc, char ** argv){
     fprintf(LOG, "Now calling: %s, %g min have ellapsed\n", cmnd, difftime(curr_time, start_time)/60.0);
     fflush(NULL);
   }
+
+  sprintf(cmnd, "./extract_delTps.pl 0.1 ../Output_files/Deldel_T_power_spec/ps_z0* > Power_k0.1");
+  system(cmnd);
+  fprintf(stderr, "Now calling: %s, %g min have ellapsed\n", cmnd, difftime(curr_time, start_time)/60.0);
+  fprintf(LOG, "Now calling: %s, %g min have ellapsed\n", cmnd, difftime(curr_time, start_time)/60.0);
+  fflush(NULL);
+
+  sprintf(cmnd, "./redshift_interpolate_boxes 0 ../Redshift_interpolate_filelists/delta_T_200_300Mpc");
+  system(cmnd);
+  fprintf(stderr, "Now calling: %s, %g min have ellapsed\n", cmnd, difftime(curr_time, start_time)/60.0);
+  fprintf(LOG, "Now calling: %s, %g min have ellapsed\n", cmnd, difftime(curr_time, start_time)/60.0);
+  fflush(NULL);
   
   fclose(LOG);
   return 0;

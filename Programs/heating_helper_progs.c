@@ -9,9 +9,6 @@
 #define KAPPA_10_NPTS (int) 27
 #define KAPPA_10_elec_NPTS (int) 20
 #define KAPPA_10_pH_NPTS (int) 17
-/* New in v1.4: Number of interpolation points for the interpolation table for z'' 
-				This is the same parameter in 21CMMC */
-//#define zpp_interp_points (int) (400) 
 
 /* Define some global variables; yeah i know it isn't "good practice" but doesn't matter */
 double zpp_edge[NUM_FILTER_STEPS_FOR_Ts], sigma_atR[NUM_FILTER_STEPS_FOR_Ts], sigma_Tmin[NUM_FILTER_STEPS_FOR_Ts], ST_over_PS[NUM_FILTER_STEPS_FOR_Ts], sum_lyn[NUM_FILTER_STEPS_FOR_Ts], R_values[NUM_FILTER_STEPS_FOR_Ts];
@@ -22,22 +19,18 @@ int NO_LIGHT;
 float M_MIN_at_z, M_MIN_at_zp;
 int HALO_MASS_DEPENDENT_IONIZING_EFFICIENCY; // New in v1.4
 float F_STAR10,F_ESC10,ALPHA_STAR,ALPHA_ESC,M_TURN,T_AST,Mlim_Fstar,Mlim_Fesc,M_MIN,Splined_Fcoll;//,Splined_Fcollz_mean; // New in v1.4
-int zpp_gridpoint1_int, zpp_gridpoint2_int;//,ithread; // New in v1.4
-float zpp_gridpoint1,zpp_gridpoint2,grad1,grad2,growth_zpp; // New in v1.4
+double X_LUMINOSITY;
+float growth_zpp; // New in v1.4
 static float determine_zpp_max, determine_zpp_min,zpp_bin_width; // new in v1.4
-float *second_derivs_Fcoll_multi_z1[NUMCORES],*second_derivs_Fcoll_multi_z2[NUMCORES];
-gsl_interp_accel *FcollLow_multi_z1_spline_acc[NUMCORES];
-gsl_spline *FcollLow_multi_z1_spline[NUMCORES];
-gsl_interp_accel *FcollLow_multi_z2_spline_acc[NUMCORES];
-gsl_spline *FcollLow_multi_z2_spline[NUMCORES];
+float *second_derivs_Fcoll_zpp[NUM_FILTER_STEPS_FOR_Ts]; // New
+//float *redshift_interp_table[NUM_FILTER_STEPS_FOR_Ts];
+float *redshift_interp_table;
+int Nsteps_zp; //New in v1.4 
+float *grad_zpp1,*grad_zpp2,*zpp_interp_table, *zpp_table; //New in v1.4
+gsl_interp_accel *FcollLow_zpp_spline_acc[NUM_FILTER_STEPS_FOR_Ts];
+gsl_spline *FcollLow_zpp_spline[NUM_FILTER_STEPS_FOR_Ts];
+
 int i; //TEST
- /* New in v1.4: This is for test to find Mmin which is the same with the original one. 
-    If the code works, you don't need this parameter.
- */
-/*float mu_for_Ts; 
-float M_MIN_WDM =  M_J_WDM();
-*/
-/* Test parameters end */
 FILE *LOG;
 
 /* initialization routine */
@@ -61,7 +54,6 @@ void evolveInt(float zp, float curr_delNL0[], double freq_int_heat[],
 	       int COMPUTE_Ts, double y[], double deriv[]);
 		   //float Mturn, float ALPHA_STAR, float F_STAR10, float T_AST);
 
-
 float dfcoll_dz(float z, float Tmin, float del_bias, float sig_bias);
 
 /* Compton heating rate */
@@ -79,8 +71,6 @@ double species_weighted_x_ray_cross_section(double nu, double x_e);
 /* Returns the frequency threshold where \tau = 1 between zp and zpp,
  in the IGM with mean electron fraction x_e */
 double nu_tau_one(double zp, double zpp, double x_e, double HI_filling_factor_zp); 
-// New in v1.4
-//double nu_tau_one(double zp, double zpp, double x_e, double HI_filling_factor_zp, float M_TURN, float ALPHA_STAR, float F_STAR10); 
 
  /* Main integral driver for the frequency integral in the evolution equations */
 double integrate_over_nu(double zp, double local_x_e, double lower_int_limit, int FLAG);
@@ -318,8 +308,6 @@ void evolveInt(float zp, float curr_delNL0[], double freq_int_heat[],
   // New in v1.4
   float growth_zpp; 
   float fcoll1,fcoll2,fcoll,gradient1,gradient2,zpp1,zpp2;
-  int zpp1_int,zpp2_int,ii;
-  float zshift,dfcoll1,dfcoll2; // TEST
 
   x_e = y[0];
   T = y[1];
@@ -344,42 +332,17 @@ void evolveInt(float zp, float curr_delNL0[], double freq_int_heat[],
       zpp = (zpp_edge[zpp_ct]+zpp_edge[zpp_ct-1])*0.5;
       dzpp = zpp_edge[zpp_ct-1] - zpp_edge[zpp_ct];
     }
-	growth_zpp = dicke(zpp); 
 	//New in v1.4
     if (HALO_MASS_DEPENDENT_IONIZING_EFFICIENCY) {
-	 /* test for dfcoll_dz: 1 of 3 - start */
-	 zshift = 0.001;
-	 for(ii=0; ii<2; ii++){
-	  if(ii==0) zpp = zpp + zshift;
-	  if(ii==1) zpp = zpp - 2.*zshift;
-	  /* test for dfcoll_dz: 1 of 3 - end */
 	  growth_zpp = dicke(zpp);
-      zpp1_int = (int)floor((zpp - determine_zpp_min)/zpp_bin_width);
-      zpp2_int = zpp1_int + 1;
-
-      zpp1 = determine_zpp_min + zpp_bin_width*(float)zpp1_int;
-      zpp2 = determine_zpp_min + zpp_bin_width*(float)zpp2_int;
-
-      gradient1 = ( zpp2 - zpp )/( zpp2 - zpp1 );
-      gradient2 = ( zpp - zpp1 )/( zpp2 - zpp1 );
-	  // initialise interpolation ----------------------------------------------------------------------------
-      gsl_spline_init(FcollLow_multi_z1_spline[ithread], log10_overdense_low_table, log10_Fcollz_SFR_low_table[zpp_ct][zpp1_int], NSFR_low); 
-      spline(Overdense_high_table-1,Fcollz_SFR_high_table[zpp_ct][zpp1_int]-1,NSFR_high,0,0,second_derivs_Fcoll_multi_z1[ithread]-1); 
-      gsl_spline_init(FcollLow_multi_z2_spline[ithread], log10_overdense_low_table, log10_Fcollz_SFR_low_table[zpp_ct][zpp2_int], NSFR_low);
-      spline(Overdense_high_table-1,Fcollz_SFR_high_table[zpp_ct][zpp2_int]-1,NSFR_high,0,0,second_derivs_Fcoll_multi_z2[ithread]-1);
-	  // initialise interpolation end -------------------------------------------------------------------------
-
 	  // Interpolate Fcoll -------------------------------------------------------------------------------------
 	  if (curr_delNL0[zpp_ct]*growth_zpp < 1.5){
         if (curr_delNL0[zpp_ct]*growth_zpp < -1.) {
-          fcoll1 = 0;
-          fcoll2 = 0;
+		  fcoll = 0;
         }
         else {
-          fcoll1 = gsl_spline_eval(FcollLow_multi_z1_spline[ithread], log10(curr_delNL0[zpp_ct]*growth_zpp+1.), FcollLow_multi_z1_spline_acc[ithread]);
-          fcoll2 = gsl_spline_eval(FcollLow_multi_z2_spline[ithread], log10(curr_delNL0[zpp_ct]*growth_zpp+1.), FcollLow_multi_z2_spline_acc[ithread]);
-          fcoll1 = pow(10., fcoll1);
-          fcoll2 = pow(10., fcoll2);
+          fcoll = gsl_spline_eval(FcollLow_zpp_spline[zpp_ct], log10(curr_delNL0[zpp_ct]*growth_zpp+1.), FcollLow_zpp_spline_acc[zpp_ct]);
+          fcoll= pow(10., fcoll);
         }
       }
       else {
@@ -387,22 +350,14 @@ void evolveInt(float zp, float curr_delNL0[], double freq_int_heat[],
           // Usage of 0.99*Deltac arises due to the fact that close to the critical density, the collapsed fraction becomes a little unstable
           // However, such densities should always be collapsed, so just set f_coll to unity. 
           // Additionally, the fraction of points in this regime relative to the entire simulation volume is extremely small.
-          splint(Overdense_high_table-1,Fcollz_SFR_high_table[zpp_ct][zpp1_int]-1,second_derivs_Fcoll_multi_z1[ithread]-1,NSFR_high,curr_delNL0[zpp_ct]*growth_zpp,&(fcoll1));
-          splint(Overdense_high_table-1,Fcollz_SFR_high_table[zpp_ct][zpp2_int]-1,second_derivs_Fcoll_multi_z2[ithread]-1,NSFR_high,curr_delNL0[zpp_ct]*growth_zpp,&(fcoll2));
+          splint(Overdense_high_table-1,Fcollz_SFR_high_table[zpp_ct]-1,second_derivs_Fcoll_zpp[zpp_ct]-1,NSFR_high,curr_delNL0[zpp_ct]*growth_zpp,&(fcoll));
         }
         else {
-          fcoll1 = 1.;
-          fcoll2 = 1.;
+          fcoll = 1.;
         }
       }
-      fcoll = fcoll1*gradient1 + fcoll2*gradient2;
       //printf("delta = %.4f, fcoll1 = %.4e, fcoll2 = %.4e\n",Overdensity,fcoll1,fcoll2);
       if (fcoll > 1.) fcoll = 1.;
-	  /* test for dfcoll_dz: 2 of 3 - start */
-	  if(ii==0) dfcoll1 = fcoll; 
-	  if(ii==1) dfcoll2 = fcoll; 
-	 } // fcoll1 and fcoll2 calculated  
-	    /* test for dfcoll_dz: 2 of 3 - end */
 	  // Find Fcoll end ----------------------------------------------------------------------------------
 
 	  /* Instead of dfcoll/dz we compute fcoll/(T_AST*H(z)^-1)*(dt/dz), 
@@ -410,8 +365,8 @@ void evolveInt(float zp, float curr_delNL0[], double freq_int_heat[],
 		This is the same parameter with 't_STAR' (defined in ANAL_PARAMS.H).
 		If turn the new parametrization on, this is a free parameter.
 		*/
-	  //dfcoll = ST_over_PS[zpp_ct]*(double)fcoll*hubble(zpp)/T_AST*fabs(dtdz(zpp));
-	  dfcoll = ST_over_PS[zpp_ct]*(double)((dfcoll1-dfcoll2)/2./zshift)*dzpp; //test for dfcoll_dz: 3 of 3
+	  dfcoll = ST_over_PS[zpp_ct]*(double)fcoll*hubble(zpp)/T_AST*fabs(dtdz(zpp));
+	  if(isnan(dfcoll)||isinf(dfcoll)) { printf("dfcoll = %.5e\n",dfcoll); exit(0);}
 	}
 	else {
       dfcoll = dfcoll_dz(zpp, sigma_Tmin[zpp_ct], curr_delNL0[zpp_ct], sigma_atR[zpp_ct]);
@@ -433,10 +388,8 @@ void evolveInt(float zp, float curr_delNL0[], double freq_int_heat[],
   dxion_source_dt *= const_zp_prefactor;
   if (COMPUTE_Ts){
     dxlya_dt *= const_zp_prefactor*n_b;
-	if (HALO_MASS_DEPENDENT_IONIZING_EFFICIENCY)
-    	dstarlya_dt *= F_STAR10 * C * N_b0 / FOURPI;
-    else
-		dstarlya_dt *= F_STAR * C * N_b0 / FOURPI;
+    dstarlya_dt *= F_STAR10 * C * N_b0 / FOURPI;
+
     /*
     if ((dxlya_dt < 0) || (dstarlya_dt<0)){
          printf("***Jalpha_x=%e, Jalpha_star=%e\n", dxlya_dt, dstarlya_dt);
@@ -495,10 +448,7 @@ void evolveInt(float zp, float curr_delNL0[], double freq_int_heat[],
   // stuff for marcos
   deriv[3] = dxheat_dzp;
   deriv[4] = dt_dzp*dxion_source_dt;
-  //printf("In evolveInt: zpp = %.4f, dansdz = %.4e, %.4e, %.4e, %.4e, %.4e\n",zpp,deriv[0],deriv[1],deriv[2],deriv[3],deriv[4]);
 }
-
-
 
 /*
   Evaluates the frequency integral in the Tx evolution equation
