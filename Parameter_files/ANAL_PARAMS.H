@@ -42,6 +42,13 @@
 #define USE_GENERAL_SOURCES (int) (1)
 
 /*
+  Set radio background temp to this fraction of ARCADE 2's measurement.
+  If 0, will just use CMB temp
+  - RM
+*/
+#define RADIO_EXCESS_FRAC (double) (0.1)
+
+/*
   This version still keeps support for the constant ionizing efficiency with sharp cut-off for minimum halo mass.
   If SHARP_CUTOFF = 1, use the constant ionizing efficency parameter with sharp cut-off.
 */

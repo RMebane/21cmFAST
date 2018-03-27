@@ -185,8 +185,25 @@ double freq_int_heat[NUM_FILTER_STEPS_FOR_Ts], freq_int_ion[NUM_FILTER_STEPS_FOR
    ION_EFF_FACTOR = N_GAMMA_UV * F_STAR10 * F_ESC10;
    //init_21cmMC_arrays(); 
  }
+
+ // Initialize source structure - RM
+ sources src;
+ src = defaultSources();
+
  M_MIN = M_TURNOVER;
  REDSHIFT = atof(argv[1]);
+
+
+ if(USE_GENERAL_SOURCES) ION_EFF_FACTOR = ionEff(REDSHIFT, src);
+
+ // Set Min Mass if necessary - RM
+ if(USE_GENERAL_SOURCES)
+ {
+     if(src.minMassIII(REDSHIFT) > src.minMass(REDSHIFT)
+         || src.minMassIII(REDSHIFT) < 0) M_MIN = src.minMass(REDSHIFT);
+     else M_MIN = src.minMassIII(REDSHIFT);
+ }
+
  system("mkdir ../Log_files");
  system("mkdir ../Output_files");
  system("mkdir ../Boxes/Ts_evolution/");
@@ -904,6 +921,7 @@ double freq_int_heat[NUM_FILTER_STEPS_FOR_Ts], freq_int_ion[NUM_FILTER_STEPS_FOR
 
       if (Tk_box[box_ct]<0){ // spurious bahaviour of the trapazoidalintegrator. generally overcooling in underdensities
 	Tk_box[box_ct] = T_cmb*(1+zp);
+    Tk_box[box_ct] = T_background(T_cmb, RADIO_EXCESS_FRAC, zp);
       }
       if (COMPUTE_Ts){
 	J_alpha_tot = dansdz[2]; //not really d/dz, but the lya flux

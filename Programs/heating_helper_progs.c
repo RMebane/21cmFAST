@@ -1,6 +1,7 @@
 #include "../Parameter_files/INIT_PARAMS.H"
 #include "../Parameter_files/ANAL_PARAMS.H"
 #include "../Parameter_files/HEAT_PARAMS.H"
+#include "../Parameter_files/SOURCES.H"
 #include "bubble_helper_progs.c"
 #include "elec_interp.c"
 
@@ -777,7 +778,8 @@ double dT_comp(double z, double TK, double xe)
 {
   double Trad,ans;
 
-  Trad = T_cmb*(1.0+z);
+  //Trad = T_cmb*(1.0+z);
+  Trad = T_background(T_cmb, RADIO_EXCESS_FRAC, z);
   ans = (-1.51e-4) * (xe/(1.0+xe+f_He)) /(hubble(z)/Ho)/hlittle*pow(Trad,4.0)/(1.0+z);
   //fprintf(stderr, "%e\t%e\t%e\t%e\n", xe, pow(Trad,4.0), hubble(z)/Ho, ans);
   ans *= Trad - TK;
@@ -902,7 +904,8 @@ float get_Ts(float z, float delta, float TK, float xe, float Jalpha, float * cur
   double TS,TSold,TSinv;
   double Tceff;
 
-  Trad = T_cmb*(1.0+z);
+  //Trad = T_cmb*(1.0+z);
+  Trad = T_background(T_cmb, RADIO_EXCESS_FRAC, z);
   xc = xcoll(z,TK,delta,xe);
   if (Jalpha > 1.0e-20) { /* Must use WF effect */
     TS = Trad;
@@ -934,7 +937,8 @@ double xcoll_HI(double z, double TK, double delta, double xe)
   double krate,nH,Trad;
   double xcoll;
 
-  Trad = T_cmb*(1.0+z);
+  //Trad = T_cmb*(1.0+z);
+  Trad = T_background(T_cmb, RADIO_EXCESS_FRAC, z);
   nH = (1.0-xe)*No*pow(1.0+z,3.0)*(1.0+delta);
   krate = kappa_10(TK,0);
   xcoll = T21/Trad*nH*krate/A10_HYPERFINE;
@@ -948,7 +952,8 @@ double xcoll_elec(double z, double TK, double delta, double xe)
   double krate,ne,Trad;
   double xcoll;
 
-  Trad = T_cmb*(1.0+z);
+  //Trad = T_cmb*(1.0+z);
+  Trad = T_background(T_cmb, RADIO_EXCESS_FRAC, z);
   ne = xe*N_b0*pow(1.0+z,3.0)*(1.0+delta);
   krate = kappa_10_elec(TK,0);
   xcoll = T21/Trad*ne*krate/A10_HYPERFINE;
@@ -960,7 +965,8 @@ double xcoll_prot(double z, double TK, double delta, double xe)
   double krate,np,Trad;
   double xcoll;
 
-  Trad = T_cmb*(1.0+z);
+  //Trad = T_cmb*(1.0+z);
+  Trad = T_background(T_cmb, RADIO_EXCESS_FRAC, z);
   np = xe*No*pow(1.0+z,3.0)*(1.0+delta);
   krate = kappa_10_pH(TK,0);
   xcoll = T21/Trad*np*krate/A10_HYPERFINE;

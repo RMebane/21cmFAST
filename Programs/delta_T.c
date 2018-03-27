@@ -1,6 +1,7 @@
 #include "../Parameter_files/INIT_PARAMS.H"
 #include "../Parameter_files/ANAL_PARAMS.H"
 #include "../Parameter_files/HEAT_PARAMS.H"
+#include "../Parameter_files/SOURCES.H"
 
 
 /*
@@ -65,7 +66,7 @@ int main(int argc, char ** argv){
   sprintf(filename, "../Log_files/delta_T_log_file_%d", getpid());
   LOG = fopen(filename, "w");
   if (!LOG){ fprintf(stderr, "delta_T.c: Error opening log file %s\n", filename);}
-  T_rad = T_cmb*(1+REDSHIFT);
+  T_rad = T_background(T_cmb, RADIO_EXCESS_FRAC, REDSHIFT);
   H = hubble(REDSHIFT);
   const_factor = 27 * (OMb*hlittle*hlittle/0.023) * 
     sqrt( (0.15/OMm/hlittle/hlittle) * (1+REDSHIFT)/10.0 );
