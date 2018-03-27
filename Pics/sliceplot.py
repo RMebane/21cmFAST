@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # SIMPLEST USAGE: python sliceplot.py -i file1 file2 file3...
 #
-#  Default slice is along the x-direction at DIM/2
+#  Default slice is at a fixed y = DIM/2
 #
 # More complex options:
 USAGE = "USAGE: python sliceplot.py [--savearray] [--zindex=<z-index of slice>] [--delzindex=<offset for subtracting image>] [--filter=<smoothing sigma>] [--filterx=<x-axis smoothing sigma>] [--filtery=<y-axis smoothing sigma>] [--filterz=<z-axis smoothing sigma>] [--min=<min of plot>] [--max=<max of plot>] -i <filename1> <filename2>..."
@@ -117,11 +117,11 @@ for path in args.input:
     sub_fig = fig.add_subplot(111)
 
     # extract a slice from the 3D cube
-    x_index = DIM/2
+    y_index = DIM/2
     if args.zindex < 0:
-        print "Taking a yz slice at x index="+str(x_index)
-        slice = data1[x_index,:,:]
-        endstr = '_xindex'+str(x_index)
+        print "Taking an xz slice at y index="+str(y_index)
+        slice = data1[:,y_index,:]
+        endstr = '_yindex'+str(y_index)
     else:
         print "Taking an xy slice at z index="+str(z_index)
         slice = data1[:,:,z_index]
@@ -140,9 +140,9 @@ for path in args.input:
     # check if it is a 21cm brightness temperature box
     if basename(filename)[0:3]=='del':
         if args.min > 1e4:
-            minrange = -210
+            minrange = -140
         if args.max < -1e4:
-            maxrange = 30
+            maxrange = 20
         cmap = LinearSegmentedColormap.from_list('mycmap', ['yellow','red','black','green','blue'])
         norm = MidpointNormalize(midpoint=0)
         frame1 = plt.gca()
@@ -153,7 +153,7 @@ for path in args.input:
         c_dens.set_clim(vmin=minrange,vmax=maxrange)
         c_bar = fig.colorbar(c_dens, orientation='vertical')
         c_bar.set_label(r'${\rm \delta T_b [\mathrm{mK}]}$', fontsize=24, rotation=-90, labelpad=32)
-        tick_array = np.linspace(minrange, maxrange, 7)
+        tick_array = np.linspace(minrange, maxrange, 9)
 
     # check if it is a neutral fraction box
     elif basename(filename)[0:3]=='xH_':

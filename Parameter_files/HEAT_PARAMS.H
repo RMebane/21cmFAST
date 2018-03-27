@@ -13,29 +13,19 @@ NOTE:  We encourage the user to perform their own convergance tests if modifying
 
 
 /*
-  Efficiency parameter corresponding to the number of x-ray photons per
-  solar mass in stars, which escape the galaxy.
-*/
-#define ZETA_X (double) (2.0e56) // 2e56 ~ 0.3 X-ray photons per stellar baryon
-
-/*
   Soft band X-ray luminosity, L_X. Used for determining the number of X-ray photons produced per stellar baryon.
   In v1.4, the old ZETA_X is replaced with a soft-band luminosity L_X. The soft band luminosity now determines the normalisation, 
- and is available as a free parameter. This is defined as the 2keV luminosity, hence NU_X_BAND_MAX = 2000.00.
+ and is available as a free parameter. This is defined as the <2keV luminosity, hence NU_X_BAND_MAX = 2000.00.
   Defined as log10(L_X). E.g. 40 = log10(10^40)
 */
-#define L_X (double) (40)
+#define L_X (double) (40.5)
 #define NU_X_BAND_MAX (double) (2000*NU_over_EV)
 
 
 /*
-  The fraction of baryons converted to stars
-*/
-#define F_STAR (double) (0.05)
-
-
-/*
-  Smallest frequency X-ray photon contributing to IGM heating and ionization
+  Smallest frequency X-ray photon contributing to IGM heating and ionization.
+  This is directly related to the mean HI column density of the first galaxies.
+  Note default 0.5 keV corresponds to ~ <N_HI> = 10^41.5 cm^-2 (c.f Das et al. 2017)
   There might be wierd behaviour if you set this to less than the HeII ionization
   threshold, <~54.4 eV
 */
@@ -45,13 +35,7 @@ NOTE:  We encourage the user to perform their own convergance tests if modifying
 /*
   X-Ray spectral index at frequencies higher than NU_X_THRESH
  */
-#define X_RAY_SPEC_INDEX (double) (1.2)
-
-
-/*
-  Minimum virial temperature (in K) of halos hosting X-ray sources responsible for heating the IGM
-*/
-#define X_RAY_Tvir_MIN (double) (1e4) // WILL BE REMOVED IN v1.4
+#define X_RAY_SPEC_INDEX (double) (1.0)
 
 
 /*
@@ -70,7 +54,7 @@ Filter choice used for smoothing the linear density field to obtain the collapse
   Maximum redshift used in the Tk and x_e evolution equations.
   Temperature and x_e are assumed to be homogenous at higher redshifts.
 */
-#define Z_HEAT_MAX (float) (35)
+#define Z_HEAT_MAX (float) (30)
 
 /*
   Maximum radius of influence for computing Xray and Lya pumping in cMpc. This

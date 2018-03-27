@@ -530,7 +530,7 @@ int main(int argc, char ** argv){
    
     for(i = 0; i < 3; ++i){
       for(j = 0; j <= i; ++j){
-        fprintf(stderr, "Initialization phi_1[%d, %d] = phi_1[%d]\n", i, j, PHI_INDEX(i, j));
+	//        fprintf(stderr, "Initialization phi_1[%d, %d] = phi_1[%d]\n", i, j, PHI_INDEX(i, j));
         phi_1[PHI_INDEX(i, j)] = (fftwf_complex *) fftwf_malloc(sizeof(fftwf_complex)*KSPACE_NUM_PIXELS);        
 
         if (!phi_1[PHI_INDEX(i, j)]){
@@ -545,7 +545,7 @@ int main(int argc, char ** argv){
     for(i = 0; i < 3; ++i){
       for(j = 0; j <= i; ++j){
 
-        fprintf(stderr, "Computing phi_1[%d, %d]...\n", i, j);
+	//        fprintf(stderr, "Computing phi_1[%d, %d]...\n", i, j);
         // read in the box
         rewind(IN);
         if (mod_fread(box, sizeof(fftwf_complex)*KSPACE_NUM_PIXELS, 1, IN)!=1){
@@ -597,14 +597,14 @@ int main(int argc, char ** argv){
 	            }
             }
           }
-          fprintf(stderr, "%i ", n_x);
+	  //          fprintf(stderr, "%i ", n_x);
       //printf("%i, (%f+%f*I)\n", n_x, creal(v_y[C_INDEX(n_x,0,0)]), cimag(v_y[C_INDEX(n_x,0,0)]));
         }
         }   
         fprintf(stderr, "\n");
        // Now we can generate the real phi_1[i,j]
     
-        fprintf(stderr, "fftwf c2r phi_1[%d, %d]\n", i, j);
+	//        fprintf(stderr, "fftwf c2r phi_1[%d, %d]\n", i, j);
         plan = fftwf_plan_dft_c2r_3d(DIM, DIM, DIM, (fftwf_complex *)phi_1[PHI_INDEX(i, j)], (float *)phi_1[PHI_INDEX(i, j)], FFTW_ESTIMATE);
         fftwf_execute(plan);
         
@@ -618,10 +618,10 @@ int main(int argc, char ** argv){
    // After that we have to return in Fourier space and generate the Fourier transform of phi_2
 
 
-    fprintf(stderr, "Generating RHS eq. D13b\n");
+    //    fprintf(stderr, "Generating RHS eq. D13b\n");
     int m, l;
     for (i=0; i<DIM; i++){
-      fprintf(stderr, "%d ", i);
+      //      fprintf(stderr, "%d ", i);
       for (j=0; j<DIM; j++){
         for (k=0; k<DIM; k++){
           //fprintf(stderr, "%d %d %d\n", i, j, k);

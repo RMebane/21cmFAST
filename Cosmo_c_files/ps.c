@@ -161,6 +161,7 @@ double sigma_norm, R, theta_cmb, omhh, z_equality, y_d, sound_horizon, alpha_nu,
 /*****     FUNCTION PROTOTYPES     *****/
 double init_ps(); /* initialize global variables, MUST CALL THIS FIRST!!! returns R_CUTOFF */
 void free_ps(); /* deallocates the gsl structures from init_ps */
+float mean_SFRD(double z); // returns the mean star formation rate density at z in M_sun yr^-1 Mpc^-3
 double splined_erfc(double); /* returns erfc for x>=0, using cubic spline in logy-x space */
 double deltolindel(float del, float z); /* converts a non-linear overdensity, del, at z to a linear overdensity at z=0 */
 double lindeltodel(float lindel, float z); /* converts a linear overdensity, del, at z=0 to a non-linear overdensity at redshift z */
@@ -863,9 +864,10 @@ double init_ps(){
   // Set cuttoff scale for WDM (eq. 4 in Barkana et al. 2001) in comoving Mpc
   R_CUTOFF = 0.201*pow((OMm-OMb)*hlittle*hlittle/0.15, 0.15)*pow(g_x/1.5, -0.29)*pow(M_WDM, -1.15);
 
-//  fprintf(stderr, "For M_DM = %.2e keV, R_CUTOFF is: %.2e comoving Mpc\n", M_WDM, R_CUTOFF);
-  if (!P_CUTOFF)
-//    fprintf(stderr, "But you have selected CDM, so this is ignored\n");
+
+  if (P_CUTOFF){
+    fprintf(stderr, "For M_DM = %.2e keV, R_CUTOFF is: %.2e comoving Mpc\n", M_WDM, R_CUTOFF);
+  }
 
   omhh = OMm*hlittle*hlittle;
   theta_cmb = T_cmb / 2.7;
@@ -1574,7 +1576,6 @@ void initialise_Xray_Fcollz_SFR_Conditional_table(int Nsteps_zp, int Nfilter, fl
     //    printf("Nfilter = %d\n",Nfilter);
     for (k=0; k < Nsteps_zp; k++) {
 	  i_tot = Nfilter*k;
-      printf("zp step = %d\n",k); //TEST
       //printf("R filter = %d\n",k);
       //Mmax = RtoM(R[k]);
       for (j=0; j < Nfilter; j++) {
@@ -1603,5 +1604,40 @@ void free_interpolation() {
 // For Ts.c : The functions above this line are under development.
 
 /* New in v1.4: end */
+
+
+
+/* returns the mean star formation rate density at z in M_sun yr^-1 Mpc^-3 */
+double mean_SFRD_dlnMhalo(double lnM, void *params){
+  double z = *(double *)params;
+  double M = exp(lnM);
+  double f_ast = STELLAR_BARYON_FRAC * pow(M/1.0e10, STELLAR_BARYON_PL);
+  double dndM = dNdM_st(z, M);
+  if (f_ast > 1)
+    f_ast = 1;
+
+  return dndM * f_ast * exp(-M_TURNOVER/M) * M * M * OMb/OMm; //extra M for the dlnM
+}
+
+float mean_SFRD(double z){
+  double result, error, lower_limit, upper_limit;
+  gsl_function F;
+  double timescale, rel_tol  = 0.001; //<- relative tolerance
+  gsl_integration_workspace * w 
+    = gsl_integration_workspace_alloc (1000);
+
+  F.function = &mean_SFRD_dlnMhalo;
+  F.params = &z;
+  lower_limit = log(M_TURNOVER/50.0);
+  upper_limit = log(FMAX(1e16, M_TURNOVER*100));
+
+  gsl_integration_qag (&F, lower_limit, upper_limit, 0, rel_tol,
+		       1000, GSL_INTEG_GAUSS61, w, &result, &error); 
+  gsl_integration_workspace_free (w);
+
+  timescale = t_STAR/hubble(z)/SperYR;
+
+  return result / timescale;
+}
 
 #endif
