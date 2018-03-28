@@ -3,7 +3,7 @@
 
 // Function definitions for source populations
 // This might go somewhere else in the code, but doing it all here for now
-// Rick Mebane 2017
+// Rick Mebane 2018
 
 #include "INIT_PARAMS.H"
 #include "ANAL_PARAMS.H"
@@ -137,11 +137,11 @@ double ionEff(double z, sources s)
 
 // BEGIN SPECIFIC SOURCE FUNCTIONS
 
-double fescDef(double z, double M) {return 0.1 * pow(M / 1.0e10, -0.4);}
-double fescIIIDef(double z, double M) {return 0.1;}
+double fescDef(double z, double M) {0.1;}//{return 0.1 * pow(M / 1.0e10, -0.4);}
+double fescIIIDef(double z, double M) {0.5;}//{return 0.1;}
 double NionDef(double z, double M) {return 5000.0;}
 double NionIIIDef(double z, double M) {return 40000.0;}
-double fstarDef(double z, double M) {return 0.03 * pow(M / 1.0e10, 0.4);}
+double fstarDef(double z, double M) {return 0.05;}//{return 0.03 * pow(M / 1.0e10, 0.4);}
 double fstarIIIDef(double z, double M) {return 1.0e-4;}
 double minMassIIIDef(double z) {return -1;}//{return minMassATC(z) / 10.0;}
 double minMassDef(double z) {return 1.0e8;}
@@ -153,6 +153,9 @@ sources defaultSources()
                    fstarDef, fstarIIIDef, minMassDef, minMassIIIDef);
     return s;
 }
+
+// Jordan Nion = 3622
+// Jordan Nlw = 12126
 
 
    
