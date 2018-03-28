@@ -37,20 +37,20 @@
   Have to set SHARP_CUTOFF = 1 for now
   -RM
 */
-#define USE_GENERAL_SOURCES (int) (1)
+#define USE_GENERAL_SOURCES (int) (0)
 
 /*
   Set radio background temp to this fraction of ARCADE 2's measurement.
   If 0, will just use CMB temp
   - RM
 */
-#define RADIO_EXCESS_FRAC (double) (0.1)
+#define RADIO_EXCESS_FRAC (double) (0.0)
 
 /*
   This version still keeps support for the constant ionizing efficiency with sharp cut-off for minimum halo mass.
   If SHARP_CUTOFF = 1, use the constant ionizing efficency parameter with sharp cut-off.
 */
-#define SHARP_CUTOFF (int) (1) 
+#define SHARP_CUTOFF (int) (0) 
 
 /*
   Maximum horizon for ionizing photons, in comoving Mpc.
@@ -98,7 +98,7 @@
   If SHARP_CUTOFF = 1, use the constant ionizing efficency parameter \zeta = N_{\gammaUV} x f_{esc} x f_{\ast}
   with sharp cut-off at M_TURNOVER.
 */
-#define SHARP_CUTOFF (int) (0)
+//#define SHARP_CUTOFF (int) (0)
 
 /*
   Maximum horizon for ionizing photons, in comoving Mpc.
