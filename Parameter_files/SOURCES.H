@@ -7,6 +7,10 @@
 
 #include "INIT_PARAMS.H"
 #include "ANAL_PARAMS.H"
+#include <math.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 
 // struct containing function pointers for source populations
 typedef struct{
@@ -109,6 +113,7 @@ double ionEff(double z, sources s)
     if(mMinIII < 0 || mMinIII >= mMinII) lower_limit = log(mMinII);
     else lower_limit = log(mMinIII);
     upper_limit = log(FMAX(1.0e16, exp(lower_limit)));
+    upper_limit = log(1.0e13);
 
     gsl_integration_workspace * w = gsl_integration_workspace_alloc(1000);
 
@@ -132,25 +137,140 @@ double ionEff(double z, sources s)
 
     gsl_integration_workspace_free(w);
 
+    printf("%le\n", resultEff / resultMf);
     return resultEff / resultMf;
 }
 
 // BEGIN SPECIFIC SOURCE FUNCTIONS
 
+double fstar_jordan(double z, double M)
+{
+    FILE * fp;
+    char * line = NULL;
+    size_t len = 0;
+    ssize_t read = 0;
+    double table[26*61];
+
+    const char *s = " ";
+    char *token = NULL;
+
+    int i = 0;
+    int j;
+
+    fp = fopen("../Parameter_files/smhm_uvlf+edges.txt", "r");
+    if(fp == NULL)
+    {
+        printf("Error opening");
+        exit(EXIT_FAILURE);
+    }
+
+    while ((read=getline(&line, &len, fp)) != -1)
+    {
+        token = strtok(line, s);
+        while(token != NULL)
+        {
+            table[i] = atof(token);
+            token=strtok(NULL, s);
+            i++;
+        }
+    }
+
+    fclose(fp);
+
+    // get fstar from table
+    int zind, Mind;
+    zind = (int) round(z-5);
+    Mind = (int) round(((log10(M) - 8) / 5) * 50 + 10);
+    return table[Mind * 26 + zind] * .28 / .046 * 2.0;
+
+}
+
+// Eq. 1 from Feng & Holder 2018
+// Not really a source pop function, but putting it here for now...
+// Tcmb given at z=0 
+double T_background(double Tcmb, double excess_frac, double z)
+{
+    double beta, Tr;
+    beta = -2.62;
+    Tr = 1.19;
+    return (Tcmb + excess_frac * Tr * pow(1.428 / (1.0 + z), beta)) * (1.0 + z);
+}
+
+double Mmin_jordan(double z)
+{
+    FILE * fp;
+    char * line = NULL;
+    size_t len = 0;
+    ssize_t read = 0;
+    double table[26*61];
+
+    const char *s = " ";
+    char *token = NULL;
+
+    int i = 0;
+    int j;
+
+    fp = fopen("../Parameter_files/smhm_uvlf+edges.txt", "r");
+    if(fp == NULL)
+    {
+        printf("Error opening");
+        exit(EXIT_FAILURE);
+    }
+
+    while ((read=getline(&line, &len, fp)) != -1)
+    {
+        token = strtok(line, s);
+        while(token != NULL)
+        {
+            table[i] = atof(token);
+            token=strtok(NULL, s);
+            i++;
+        }
+    }
+
+    fclose(fp);
+
+    double logM = 7;
+    int zind, Mind;
+    while(logM < 10)
+    {
+        Mind = (int) round(((logM - 8) / 5) * 50 + 10);
+        zind = (int) round(z-5);
+
+        if(table[Mind * 26 + zind] > 0) 
+        {
+            return pow(10.0, logM);
+        }
+        logM += 0.1;
+    }
+    return 1.0e8;
+    
+}
+
+double fstar_21cmfid(double z, double M)
+{
+    return 2.5e-2 * pow(M / 1.0e10, 0.4);
+}
+
+double fesc_21cmfid(double z, double M)
+{
+    return 0.1 * pow(M / 1.0e10, -0.4);
+}
+
 double fescDef(double z, double M) {return 0.1 * pow(M / 1.0e10, -0.4);}
-double fescIIIDef(double z, double M) {return 0.1;}
+double fescIIIDef(double z, double M) {return 0.5;}//{return 1.0;}
 double NionDef(double z, double M) {return 5000.0;}
 double NionIIIDef(double z, double M) {return 40000.0;}
 double fstarDef(double z, double M) {return 0.03 * pow(M / 1.0e10, 0.4);}
-double fstarIIIDef(double z, double M) {return 1.0e-4;}
+double fstarIIIDef(double z, double M) {return 0.0005;}//{return 1.0e-4;}
 double minMassIIIDef(double z) {return -1;}//{return minMassATC(z) / 10.0;}
-double minMassDef(double z) {return 1.0e8;}
+double minMassDef(double z) {return 1.0e8;}//{return minMassATC(z);}//{return 1.0e8;}
 
 sources defaultSources()
 {
     sources s;
-    s = setSources(fescDef, fescIIIDef, NionDef, NionIIIDef, 
-                   fstarDef, fstarIIIDef, minMassDef, minMassIIIDef);
+    s = setSources(fesc_21cmfid, fescIIIDef, NionDef, NionIIIDef, 
+                   fstar_21cmfid, fstarIIIDef, minMassDef, minMassIIIDef);
     return s;
 }
 
