@@ -481,6 +481,9 @@ double freq_int_heat[NUM_FILTER_STEPS_FOR_Ts], freq_int_ion[NUM_FILTER_STEPS_FOR
     x_e_ave = xe_BC;
     Tk_ave = Tk_BC;
 
+    // - RM
+    printf("1. %le\n", Tk_ave);
+
     printf("Starting at at z_max=%f, Tk=%f, x_e=%e\n", Z_HEAT_MAX, Tk_ave, x_e_ave);
   }
   else{ // we need to load the evolution files from the intermediate output
@@ -548,6 +551,10 @@ double freq_int_heat[NUM_FILTER_STEPS_FOR_Ts], freq_int_ion[NUM_FILTER_STEPS_FOR
       x_e_ave += x_e_box[box_ct];
     }
     Tk_ave /= (double) HII_TOT_NUM_PIXELS;
+
+    // - RM
+    printf("2. %le\n", Tk_ave);
+
     x_e_ave /= (double) HII_TOT_NUM_PIXELS;
     fprintf(stderr, "Rebooting from z'=%f output. <Tk> = %f. <xe> = %e\n", zp, Tk_ave, x_e_ave);
     
@@ -954,6 +961,10 @@ double freq_int_heat[NUM_FILTER_STEPS_FOR_Ts], freq_int_ion[NUM_FILTER_STEPS_FOR
     Ts_ave /= (double)HII_TOT_NUM_PIXELS;
     x_e_ave /= (double)HII_TOT_NUM_PIXELS;
     Tk_ave /= (double)HII_TOT_NUM_PIXELS;
+
+    // - RM
+    printf("3. %le\n", Tk_ave);
+
     J_alpha_ave /= (double)HII_TOT_NUM_PIXELS;
     xalpha_ave /= (double)HII_TOT_NUM_PIXELS;
     Xheat_ave /= (double)HII_TOT_NUM_PIXELS;
