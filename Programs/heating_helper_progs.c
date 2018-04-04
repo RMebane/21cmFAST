@@ -777,8 +777,8 @@ double dT_comp(double z, double TK, double xe)
 {
   double Trad,ans;
 
-  //Trad = T_cmb*(1.0+z);
-  Trad = T_background(T_cmb, RADIO_EXCESS_FRAC, z);
+  Trad = T_cmb*(1.0+z);
+  //Trad = T_background(T_cmb, RADIO_EXCESS_FRAC, z);
   ans = (-1.51e-4) * (xe/(1.0+xe+f_He)) /(hubble(z)/Ho)/hlittle*pow(Trad,4.0)/(1.0+z);
   //fprintf(stderr, "%e\t%e\t%e\t%e\n", xe, pow(Trad,4.0), hubble(z)/Ho, ans);
   ans *= Trad - TK;
