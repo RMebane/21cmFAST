@@ -121,7 +121,7 @@ double freq_int_heat[NUM_FILTER_STEPS_FOR_Ts], freq_int_ion[NUM_FILTER_STEPS_FOR
  double Luminosity_conversion_factor;
  int RESTART = 0;
 
-
+printf("0\n");
  /**********  BEGIN INITIALIZATION   **************************************/
  //New in v1.4
  if (SHARP_CUTOFF) {
@@ -185,7 +185,7 @@ double freq_int_heat[NUM_FILTER_STEPS_FOR_Ts], freq_int_ion[NUM_FILTER_STEPS_FOR
    HALO_MASS_DEPENDENT_IONIZING_EFFICIENCY = 1;
    ION_EFF_FACTOR = N_GAMMA_UV * F_STAR10 * F_ESC10;
  }
-
+printf("10\n");
  // Initialize source structure - RM
  sources src;
  src = defaultSources();
@@ -193,9 +193,9 @@ double freq_int_heat[NUM_FILTER_STEPS_FOR_Ts], freq_int_ion[NUM_FILTER_STEPS_FOR
  M_MIN = M_TURNOVER;
  REDSHIFT = atof(argv[1]);
 
-
+init_ps();
  if(USE_GENERAL_SOURCES) ION_EFF_FACTOR = ionEff(REDSHIFT, src);
-
+printf("11\n");
  // Set Min Mass if necessary - RM
  if(USE_GENERAL_SOURCES)
  {
@@ -204,13 +204,14 @@ double freq_int_heat[NUM_FILTER_STEPS_FOR_Ts], freq_int_ion[NUM_FILTER_STEPS_FOR
      else M_MIN = src.minMassIII(REDSHIFT);
  }
 
+ printf("1\n");
+
  system("mkdir ../Log_files");
  system("mkdir ../Output_files");
  system("mkdir ../Boxes/Ts_evolution/");
  system("mkdir ../Output_files/Ts_outs/");
  system("cp ../Parameter_files/* ../Output_files/Ts_outs/");
  system("cp ../Parameter_files/* ../Boxes/Ts_evolution/");
- init_ps();
  omp_set_num_threads(NUMCORES);
  growth_factor_z = dicke(REDSHIFT);
  
@@ -284,6 +285,8 @@ double freq_int_heat[NUM_FILTER_STEPS_FOR_Ts], freq_int_ion[NUM_FILTER_STEPS_FOR
        }
      }
    }
+
+    printf("2\n");
 
    destruct_heat(); fclose(F); fclose(OUT);
    return 0;
@@ -367,7 +370,8 @@ double freq_int_heat[NUM_FILTER_STEPS_FOR_Ts], freq_int_ion[NUM_FILTER_STEPS_FOR
     }
   }
   fclose(F);
-
+    
+  printf("3\n");
 
   /*** Transform unfiltered box to k-space to prepare for filtering ***/
   fprintf(stderr, "begin initial ffts, time=%06.2f min\n", (double)clock()/CLOCKS_PER_SEC/60.0);
@@ -516,6 +520,8 @@ double freq_int_heat[NUM_FILTER_STEPS_FOR_Ts], freq_int_ion[NUM_FILTER_STEPS_FOR
       }
       fclose(F);
     }
+
+    printf("4\n");
     // then xe_neutral
 	// New in v1.4
     if (HALO_MASS_DEPENDENT_IONIZING_EFFICIENCY) {
@@ -652,7 +658,7 @@ double freq_int_heat[NUM_FILTER_STEPS_FOR_Ts], freq_int_ion[NUM_FILTER_STEPS_FOR
 	
   }
   
-
+    printf("5\n");
   counter = 0;
   while (zp > REDSHIFT){
 
@@ -788,6 +794,8 @@ double freq_int_heat[NUM_FILTER_STEPS_FOR_Ts], freq_int_ion[NUM_FILTER_STEPS_FOR
 
       lower_int_limit = FMAX(nu_tau_one(zp, zpp, x_e_ave, filling_factor_of_HI_zp), NU_X_THRESH);
 
+
+      printf("6\n");
 /***************  PARALLELIZED LOOP ******************************************************************/
       // set up frequency integral table for later interpolation for the cell's x_e value
 #pragma omp parallel shared(freq_int_heat_tbl, freq_int_ion_tbl, COMPUTE_Ts, freq_int_lya_tbl, zp, R_ct, x_e_ave, x_int_XHII, x_int_Energy, x_int_fheat, x_int_n_Lya, x_int_nion_HI, x_int_nion_HeI, x_int_nion_HeII, lower_int_limit) private(x_e_ct)
