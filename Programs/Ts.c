@@ -660,7 +660,18 @@ printf("11\n");
   
     printf("5\n");
   counter = 0;
+  printf("%lf %lf\n", zp, REDSHIFT);
   while (zp > REDSHIFT){
+ if(USE_GENERAL_SOURCES) ION_EFF_FACTOR = ionEff(zp, src);
+
+ if(USE_GENERAL_SOURCES)
+ {
+     if(src.minMassIII(zp) > src.minMass(zp)
+         || src.minMassIII(zp) < 0) M_MIN = src.minMass(zp);
+     else M_MIN = src.minMassIII(zp);
+ }
+
+
 
 	// New in v1.4: initialise interpolation of fcoll over zpp and overdensity.
 	if (HALO_MASS_DEPENDENT_IONIZING_EFFICIENCY) {
@@ -674,7 +685,7 @@ printf("11\n");
     // check if we will next compute the spin temperature (i.e. if this is the final zp step)
     if (Ts_verbose || (((1+zp) / ZPRIME_STEP_FACTOR) < (REDSHIFT+1)) )
       COMPUTE_Ts = 1;
-
+printf("COMPUTE_Ts = %d\n",COMPUTE_Ts);
     // check if we are in the really high z regime before the first stars..
 	if (HALO_MASS_DEPENDENT_IONIZING_EFFICIENCY) { // New in v1.4
 	  FgtrM_st_SFR_z(zp,&(Splined_Fcollzp_mean));
@@ -690,12 +701,13 @@ printf("11\n");
         NO_LIGHT = 0;
 	}
 
+
 	//New in v1.4
 	if (HALO_MASS_DEPENDENT_IONIZING_EFFICIENCY) {
 	  filling_factor_of_HI_zp = 1 - ION_EFF_FACTOR * Splined_Fcollzp_mean / (1.0 - x_e_ave); // fcoll including f_esc
 	}
 	else {
-	  filling_factor_of_HI_zp = 1 - HII_EFF_FACTOR * FgtrM_st(zp, M_MIN) / (1.0 - x_e_ave);
+	  filling_factor_of_HI_zp = 1 - ION_EFF_FACTOR * FgtrM_st(zp, M_MIN) / (1.0 - x_e_ave);
 	}
 
     if (filling_factor_of_HI_zp > 1) filling_factor_of_HI_zp=1;
@@ -708,7 +720,6 @@ printf("11\n");
     fprintf(stderr, "Initializing look-up tables. Time=%06.2f min\n", (double)clock()/CLOCKS_PER_SEC/60.0);
     fprintf(LOG, "Initializing look-up tables. Time=%06.2f min\n", (double)clock()/CLOCKS_PER_SEC/60.0);
     time(&start_time);
-
     for (R_ct=0; R_ct<NUM_FILTER_STEPS_FOR_Ts; R_ct++){
       if (R_ct==0){
 	prev_zpp = zp;
@@ -720,10 +731,10 @@ printf("11\n");
       }
 	
       zpp_edge[R_ct] = prev_zpp - (R_values[R_ct] - prev_R)*CMperMPC / drdz(prev_zpp); // cell size
-      zpp = (zpp_edge[R_ct]+prev_zpp)*0.5; // average redshift value of shell: z'' + 0.5 * dz''
-	  if (zpp - redshift_interp_table[arr_num+R_ct] > 1e-3) printf("zpp = %.4f, zpp_array = %.4f\n", zpp, redshift_interp_table[arr_num+R_ct]);
-      if(SHARP_CUTOFF) sigma_Tmin[R_ct] =  sigma_z0(M_MIN); // In v1.4 sigma_Tmin doesn't nedd to be an array, just a constant.
 
+      zpp = (zpp_edge[R_ct]+prev_zpp)*0.5; // average redshift value of shell: z'' + 0.5 * dz''
+	  //if (zpp - redshift_interp_table[arr_num+R_ct] > 1e-3) printf("zpp = %.4f, zpp_array = %.4f\n", zpp, redshift_interp_table[arr_num+R_ct]);
+      if(SHARP_CUTOFF) sigma_Tmin[R_ct] =  sigma_z0(M_MIN); // In v1.4 sigma_Tmin doesn't nedd to be an array, just a constant.
       // let's now normalize the total collapse fraction so that the mean is the
       // Sheth-Torman collapse fraction
       fcoll_R = 0;
@@ -731,6 +742,7 @@ printf("11\n");
       for (box_ct=0; box_ct<HII_TOT_NUM_PIXELS; box_ct+=(HII_TOT_NUM_PIXELS/1e5+1)){
 	sample_ct++;
 	// New in v1.4
+
 	if (HALO_MASS_DEPENDENT_IONIZING_EFFICIENCY) {
 	  growth_zpp = dicke(zpp);
       //---------- interpolation for fcoll starts ----------
@@ -795,7 +807,6 @@ printf("11\n");
       lower_int_limit = FMAX(nu_tau_one(zp, zpp, x_e_ave, filling_factor_of_HI_zp), NU_X_THRESH);
 
 
-      printf("6\n");
 /***************  PARALLELIZED LOOP ******************************************************************/
       // set up frequency integral table for later interpolation for the cell's x_e value
 #pragma omp parallel shared(freq_int_heat_tbl, freq_int_ion_tbl, COMPUTE_Ts, freq_int_lya_tbl, zp, R_ct, x_e_ave, x_int_XHII, x_int_Energy, x_int_fheat, x_int_n_Lya, x_int_nion_HI, x_int_nion_HeI, x_int_nion_HeII, lower_int_limit) private(x_e_ct)
@@ -820,7 +831,6 @@ printf("11\n");
 	sum_lyn[R_ct] += frecycle(n_ct) * spectral_emissivity(nuprime, 0);
       }
     } // end loop over R_ct filter steps
-
     time(&curr_time);
     fprintf(stderr, "Finishing initializing look-up tables.  It took %06.2f min on the main thread. Time elapsed (total for all threads)=%06.2f\n", difftime(curr_time, start_time)/60.0, (double)clock()/CLOCKS_PER_SEC/60.0);
     fprintf(LOG, "Finishing initializing look-up tables.  It took %06.2f min on the main thread. Total time elapsed (total for all threads)=%06.2f\n", difftime(curr_time, start_time)/60.0, (double)clock()/CLOCKS_PER_SEC/60.0);
