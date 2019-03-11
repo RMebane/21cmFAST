@@ -1343,7 +1343,7 @@ double zeta_denom(double z, double M1, double M2, double delta1, double delta2, 
     upper_limit = M2;
 
     //testing...
-    if(flag==1) printf("%le %le %le %le %le\n", z, log(M1), M2, delta1, delta2);
+    //if(flag==1) printf("%le %le %le %le %le\n", z, log(M1), M2, delta1, delta2);
 
     gsl_integration_qag (&F, lower_limit, upper_limit, 0, rel_tol,
                         1000, GSL_INTEG_GAUSS61, w, &result, &error);
@@ -1511,7 +1511,6 @@ void initialisezetaSFR_spline(float z, float Mmax, float MassTurnover, float Alp
     for(i=0;i<NSFR_high;i++) {
 
         Overdense_spline_SFR[i] = overdense_large_low + (float)i/((float)NSFR_high-1.)*(overdense_large_high - overdense_large_low);
-        printf("12345\n");
         zeta_spline_SFR[i] = zeta_SFR(z,log(MassTurnover),log(Mmax),Deltac,Overdense_spline_SFR[i],MassTurnover,Alpha_star,Alpha_esc,Fstar10,Fesc10);
         if(zeta_spline_SFR[i]<0.) {
             zeta_spline_SFR[i]=pow(10.,-40.0);
