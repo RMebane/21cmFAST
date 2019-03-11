@@ -55,7 +55,7 @@ double get_param(char* f, int ind)
   Use the generalized source presciptions in SOURCES.H if 1
   -RM
 */
-#define USE_GENERAL_SOURCES (int) (0)
+#define USE_GENERAL_SOURCES (int) (1)
 
 /*
   Set radio background temp to this fraction of ARCADE 2's measurement.
