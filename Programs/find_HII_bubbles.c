@@ -168,6 +168,8 @@ int main(int argc, char ** argv){
   int x,y,z, N_min_cell, LAST_FILTER_STEP, num_th, arg_offset, i,j,k;
   unsigned long long ct, ion_ct, sample_ct;
   float f_coll_crit, pixel_volume,  density_over_mean, erfc_num, erfc_denom, erfc_denom_cell, res_xH, Splined_Fcoll;
+  // - RM
+  float Splined_zeta;
   float *xH=NULL, TVIR_MIN, MFP, xHI_from_xrays, std_xrays, *z_re=NULL, *Gamma12=NULL, *mfp=NULL;
   fftwf_complex *M_coll_unfiltered=NULL, *M_coll_filtered=NULL, *deltax_unfiltered=NULL, *deltax_filtered=NULL, *xe_unfiltered=NULL, *xe_filtered=NULL;
   fftwf_complex *N_rec_unfiltered=NULL, *N_rec_filtered=NULL;
@@ -185,6 +187,7 @@ int main(int argc, char ** argv){
   *error_message = '\0';
   //TEST
   double mhalo_i,dmhalo,mhalo_min,mhalo_max,Fesc,Fesc2,Fesc3;
+  // - RM
 
   // Initializtion of source structure - RM
   sources src;
@@ -228,6 +231,8 @@ int main(int argc, char ** argv){
     }
   }
 
+  printf("%le %le %le\n", N_GAMMA_UV, STELLAR_BARYON_FRAC, STELLAR_BARYON_PL);
+
 
 /*  if ((fabs(ALPHA_STAR) > FRACT_FLOAT_ERR) ||
       (fabs(ALPHA_ESC) > FRACT_FLOAT_ERR) ){ // use the new galaxy parametrization in v1.4 (see ANAL_PARAMS.H)
@@ -260,8 +265,9 @@ int main(int argc, char ** argv){
     ION_EFF_FACTOR = N_GAMMA_UV * STELLAR_BARYON_FRAC * ESC_FRAC; // Constant ionizing efficiency parameter.
 
   // compute ION_EFF_FACTOR if we are using sources defined in SOURCES.H - RM
+  // set equal to 1, since all the prefactors are now in the fcoll calculation
 
-  if (USE_GENERAL_SOURCES) ION_EFF_FACTOR = ionEff(REDSHIFT, src);
+  if (USE_GENERAL_SOURCES) ION_EFF_FACTOR = 1;
 
   // Set the minimum halo mass hosting ionizing source mass.
   // For constant ionizing efficiency parameter M_MIN is set to be M_TURN which is a sharp cut-off.
@@ -276,12 +282,12 @@ int main(int argc, char ** argv){
   }
 
   // Set minimum mass if we are using sources defined in SOURCES.H - RM
-  if (USE_GENERAL_SOURCES)
-  {
-      if(src.minMassIII(REDSHIFT) > src.minMass(REDSHIFT) 
-         || src.minMassIII(REDSHIFT) < 0) M_MIN = src.minMass(REDSHIFT);
-      else M_MIN = src.minMassIII(REDSHIFT);
-  }
+  //if (USE_GENERAL_SOURCES)
+  //{
+  //    if(src.minMassIII(REDSHIFT) > src.minMass(REDSHIFT) 
+  //       || src.minMassIII(REDSHIFT) < 0) M_MIN = src.minMass(REDSHIFT);
+  //    else M_MIN = src.minMassIII(REDSHIFT);
+ // }
 
 
   // check for WDM
@@ -324,11 +330,21 @@ int main(int argc, char ** argv){
 
   // compute the mean collpased fraction at this redshift
   if (HALO_MASS_DEPENDENT_IONIZING_EFFICIENCY){ // New in v1.4
-    mean_f_coll_st = FgtrM_st_SFR(REDSHIFT, M_TURN, ALPHA_STAR, ALPHA_ESC, F_STAR10, F_ESC10, Mlim_Fstar, Mlim_Fesc);
+    // - RM
+    //if(USE_GENERAL_SOURCES)
+    //{
+    //  mean_f_coll_st = FgtrM_st(REDSHIFT, src.minMass(REDSHIFT));
+    //}
+    //else
+    //{
+      mean_f_coll_st = FgtrM_st_SFR(REDSHIFT, M_TURN, ALPHA_STAR, ALPHA_ESC, F_STAR10, F_ESC10, Mlim_Fstar, Mlim_Fesc);
+    //}
   }
   else { 
     mean_f_coll_st = FgtrM_st(REDSHIFT, M_MIN);
   }
+  // - RM
+  X_LUMINOSITY = 3.2e40;
     /**********  CHECK IF WE ARE IN THE DARK AGES ******************************/
     // lets check if we are going to bother with computing the inhmogeneous field at all...
     if ((mean_f_coll_st*ION_EFF_FACTOR < HII_ROUND_ERR)){ // way too small to ionize anything...//New in v1.4
@@ -739,10 +755,15 @@ int main(int argc, char ** argv){
 	fflush(LOG);
 	temparg =  2*(pow(sigma_z0(M_MIN), 2) - pow(sigma_z0(massofscaleR), 2) );
 	erfc_denom = sqrt(temparg);
-	    
 	if(HALO_MASS_DEPENDENT_IONIZING_EFFICIENCY) { // New in v1.4
 	  initialiseGL_FcollSFR(NGL_SFR, M_MIN/50.0, massofscaleR);
 	  initialiseFcollSFR_spline(REDSHIFT, massofscaleR,M_TURN,ALPHA_STAR,ALPHA_ESC,F_STAR10,F_ESC10,Mlim_Fstar,Mlim_Fesc);
+    // - RM
+    if(USE_GENERAL_SOURCES)
+    {
+      //initialiseGL_zetaSFR(NGL_SFR, M_MIN/50.0, massofscaleR);
+      initialisezetaSFR_spline(REDSHIFT, massofscaleR,M_TURN,ALPHA_STAR,ALPHA_ESC,F_STAR10,F_ESC10,Mlim_Fstar,Mlim_Fesc);
+    }
 	}
 
 	for (x=0; x<HII_DIM; x++){
@@ -751,19 +772,31 @@ int main(int argc, char ** argv){
 	      if (USE_HALO_FIELD){
 		Splined_Fcoll = *((float *)M_coll_filtered + HII_R_FFT_INDEX(x,y,z)) / (massofscaleR*density_over_mean);
 		Splined_Fcoll *= (4/3.0)*PI*pow(R,3) / pixel_volume;
+    // - RM
+    if(USE_GENERAL_SOURCES)
+    {
+      Splined_zeta = *((float *)M_coll_filtered + HII_R_FFT_INDEX(x,y,z)) / (massofscaleR*density_over_mean);
+      Splined_zeta *= (4/3.0)*PI*pow(R,3) / pixel_volume;
+    }
 	      }
 	    
 	      else{
+          // - RM
+      if(USE_GENERAL_SOURCES) {
+        zetaSpline_SFR(density_over_mean - 1,&(Splined_zeta));
+      }
 		density_over_mean = 1.0 + *((float *)deltax_filtered + HII_R_FFT_INDEX(x,y,z));	    
 		if ( (density_over_mean - 1) < Deltac){ // we are not resolving collapsed structures
 		  if (HALO_MASS_DEPENDENT_IONIZING_EFFICIENCY) { // New in v1.4
 			FcollSpline_SFR(density_over_mean - 1,&(Splined_Fcoll));
-		  }
+      }
+		
 		  else{ // we can assume the classic constant ionizing luminosity to halo mass ratio
 		    erfc_num = (Deltac - (density_over_mean-1)) /  growth_factor;
 		    Splined_Fcoll = splined_erfc(erfc_num/erfc_denom);
-		  }	      
-		}
+      }
+		  	}      
+		
 		else { // the entrire cell belongs to a collpased halo...  this is rare...
 		  Splined_Fcoll =  1.0;
 		}
@@ -771,7 +804,13 @@ int main(int argc, char ** argv){
 
 	      // save the value of the collasped fraction into the Fcoll array
 	      Fcoll[HII_R_FFT_INDEX(x,y,z)] = Splined_Fcoll;
-	      f_coll += Splined_Fcoll;	    
+	      f_coll += Splined_Fcoll;	  
+        // - RM
+        if(USE_GENERAL_SOURCES)
+        {
+          Fcoll[HII_R_FFT_INDEX(x,y,z)] = Splined_Fcoll * Splined_zeta;
+          f_coll += Splined_Fcoll * Splined_zeta;
+        }  
 	    }
 	  }
 	} //  end loop through Fcoll box
@@ -826,6 +865,7 @@ int main(int argc, char ** argv){
 	    }
 
 	    // check if fully ionized!
+      //printf("F_COLL ZETA = %le\n", f_coll);
 	    if ( (f_coll*ION_EFF_FACTOR > xHI_from_xrays*(1.0+rec)) ){ //IONIZED!! //New in v1.4
 	    
 	      // if this is the first crossing of the ionization barrier for this cell (largest R), record the gamma

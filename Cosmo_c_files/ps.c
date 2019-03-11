@@ -9,6 +9,7 @@
 #include <unistd.h>
 #include "../Parameter_files/COSMOLOGY.H"
 #include "../Parameter_files/INIT_PARAMS.H"
+#include "../Parameter_files/SOURCES.H"
 #include <gsl/gsl_interp.h>
 #include <gsl/gsl_spline.h>
 #include "cosmo_progs.c"
@@ -56,13 +57,19 @@ static gsl_interp_accel *Fcoll_spline_acc;
 static gsl_spline *Fcoll_spline;
 
 /* New in v1.4 - part 2 of 4: begin */
-static double log10_overdense_spline_SFR[NSFR_low], log10_Fcoll_spline_SFR[NSFR_low];
+static double log10_overdense_spline_SFR[NSFR_low], log10_Fcoll_spline_SFR[NSFR_low], log10_zeta_spline_SFR[NSFR_low];
 static gsl_interp_accel *FcollLow_spline_acc;
+static gsl_interp_accel *zetaLow_spline_acc;
 static gsl_spline *FcollLow_spline;
+static gsl_spline *zetaLow_spline;
 
 void initialiseGL_FcollSFR(int n, float M_TURN, float M_Max);
 void FcollSpline_SFR(float Overdensity, float *splined_value);
 void initialiseFcollSFR_spline(float z, float Mmax, float MassTurnover, float Alpha_star, float Alpha_esc, float Fstar10, float Fesc10, float Mlim_Fstar, float Mlim_Fesc);
+
+void initialiseGL_zetaSFR(int n, float M_Min, float M_Max);
+void zetaSpline_SFR(float Overdensity, float *splined_value);
+void initialisezetaSFR_spline(float z, float Mmax, float MassTurnover, float Alpha_star, float Alpha_esc, float Fstar10, float Fesc10, float Mlim_Fstar, float Mlim_Fesc);
 
 float Mass_limit (float logM, float PL, float FRAC);
 void bisection(float *x, float xlow, float xup, int *iter);
@@ -143,8 +150,9 @@ double dFdlnM_st_PL (double lnM, void *params);
 double FgtrM_st_PL(double z, double Mmin, double MFeedback, double alpha_pl);
 
 /* New in v1.4 - part 3 of 4: start */
-float *Overdense_spline_SFR,*Fcoll_spline_SFR,*second_derivs_SFR;
+float *Overdense_spline_SFR,*Fcoll_spline_SFR,*zeta_spline_SFR,*second_derivs_SFR,*zeta_second_derivs_SFR;
 float *xi_SFR,*wi_SFR;
+float *xi_SFR_zeta,*wi_SFR_zeta;
 
 float FgtrConditionallnM_GL_SFR(float M, struct parameters_gsl_SFR_con_int_ parameters_gsl_SFR_con);
 float GaussLegendreQuad_FcollSFR(int n, float z, float M2, float delta1, float delta2, float MassTurnover, float Alpha_star, float Alpha_esc, float Fstar10, float Fesc10, float Mlim_Fstar, float Mlim_Fesc);
@@ -1281,6 +1289,261 @@ double FgtrM_st_SFR(double z, double MassTurnover, double Alpha_star, double Alp
     gsl_integration_workspace_free (w);
 
     return result / (OMm*RHOcrit);
+
+}
+
+// - RM
+
+//void initialiseGL_zetaSFR(int n, float M_Min, float M_Max)
+//{
+//  gauleg(log(M_Min),log(M_Max),xi_SFR_zeta,wi_SFR_zeta,n);
+//}
+
+double zeta_denom_integrand(double lnM, void *params)
+{
+  struct parameters_gsl_SFR_con_int_ vals = *(struct parameters_gsl_SFR_con_int_ *)params;
+      double M = exp(lnM); // linear scale
+    double z = vals.z_obs;
+    double M2 = vals.Mval; // natural log scale
+    double del1 = vals.delta1;
+    double del2 = vals.delta2;
+    double MassTurnover = vals.Mdrop;
+    double Alpha_star = vals.pl_star;
+    double Alpha_esc = vals.pl_esc;
+  double Fstar10 = vals.frac_star;
+  double Fesc10 = vals.frac_esc;
+
+  return M*dNdM_conditional_second(z,log(M),M2,del1,del2)/sqrt(2.*PI);
+}
+
+double zeta_denom(double z, double M1, double M2, double delta1, double delta2, int flag)
+{
+  double result, error, lower_limit, upper_limit;
+  gsl_function F;
+  double rel_tol = 0.005;
+  gsl_integration_workspace * w
+  = gsl_integration_workspace_alloc (1000);
+ 
+  // jsut setting things we don't care about to 0 so we don't have to make another struct
+  struct parameters_gsl_SFR_con_int_ parameters_gsl_SFR_con = {
+      .z_obs = z,
+      .Mval = M2,
+      .delta1 = delta1,
+      .delta2 = delta2,
+      .Mdrop = 0,
+      .pl_star = 0,
+      .pl_esc = 0,
+      .frac_star = 0,
+      .frac_esc = 0
+    };
+
+    F.function = &zeta_denom_integrand;
+    F.params = &parameters_gsl_SFR_con;
+    lower_limit = log(M1);
+    upper_limit = M2;
+
+    //testing...
+    if(flag==1) printf("%le %le %le %le %le\n", z, log(M1), M2, delta1, delta2);
+
+    gsl_integration_qag (&F, lower_limit, upper_limit, 0, rel_tol,
+                        1000, GSL_INTEG_GAUSS61, w, &result, &error);
+    gsl_integration_workspace_free (w);
+    return result;
+}
+
+float zeta_GL_SFR(float lnM, struct parameters_gsl_SFR_con_int_ parameters_gsl_SFR_con)
+{
+      float M = exp(lnM);
+    float z = parameters_gsl_SFR_con.z_obs;
+    float M2 = parameters_gsl_SFR_con.Mval;
+    float del1 = parameters_gsl_SFR_con.delta1;
+    float del2 = parameters_gsl_SFR_con.delta2;
+    float MassTurnover = parameters_gsl_SFR_con.Mdrop;
+    float Alpha_star = parameters_gsl_SFR_con.pl_star;
+    float Alpha_esc = parameters_gsl_SFR_con.pl_esc;
+  float Fstar10 = parameters_gsl_SFR_con.frac_star;
+  float Fesc10 = parameters_gsl_SFR_con.frac_esc;
+
+  float Fstar = pow(M/1e10,Alpha_star);
+  float Fesc = pow(M/1e10,Alpha_esc);
+
+  if (Fstar > 1.) Fstar = 1./Fstar10;
+  else if (Fstar < 0.) Fstar = FRACT_FLOAT_ERR;
+
+  if (Fesc > 1.) Fesc = 1./Fesc10;
+  else if (Fstar < 0.) Fesc = FRACT_FLOAT_ERR;
+
+  sources s;
+  s = defaultSources();
+
+  //printf("%e %e %e %e %e", z, M, M2, del1, del2);
+  return zeta_at_M(s, z, M) * M*dNdM_conditional_second(z,log(M),M2,del1,del2)/sqrt(2.*PI);
+}
+
+
+float GaussLegendreQuad_zetaSFR(int n, float z, float M2, float delta1, float delta2, float MassTurnover, float Alpha_star, float Alpha_esc, float Fstar10, float Fesc10)
+{
+      //Performs the Gauss-Legendre quadrature.
+    int i;
+    float integrand, x, denom_integrand;
+    integrand = 0.;
+    denom_integrand = 0.;
+    struct parameters_gsl_SFR_con_int_ parameters_gsl_SFR_con = {
+        .z_obs = z,
+        .Mval = M2,
+        .delta1 = delta1,
+        .delta2 = delta2,
+        .Mdrop = MassTurnover,
+        .pl_star = Alpha_star,
+        .pl_esc = Alpha_esc,
+    .frac_star = Fstar10,
+    .frac_esc = Fesc10
+    };
+
+    if(delta2 > delta1){
+        return 1.;
+    }
+    else{
+        for(i=1; i<(n+1); i++){
+            x = xi_SFR[i];
+            x = xi_SFR[i];
+            integrand += wi_SFR[i]*zeta_GL_SFR(x,parameters_gsl_SFR_con);
+        }
+        // MassTurnover here is really Mmin
+        return integrand / ((float) zeta_denom((double) z, (double) MassTurnover, (double) M2, (double) delta1, (double) delta2, 0));
+    }
+
+}
+
+double dzetalnM_SFR(double lnM, void *params)
+{
+  struct parameters_gsl_SFR_con_int_ vals = *(struct parameters_gsl_SFR_con_int_ *)params;
+    double M = exp(lnM); // linear scale
+    double z = vals.z_obs;
+    double M2 = vals.Mval; // natural log scale
+    double del1 = vals.delta1;
+    double del2 = vals.delta2;
+    double MassTurnover = vals.Mdrop;
+    double Alpha_star = vals.pl_star;
+    double Alpha_esc = vals.pl_esc;
+  double Fstar10 = vals.frac_star;
+  double Fesc10 = vals.frac_esc;
+
+  double Fstar = pow(M/1e10,Alpha_star);
+  double Fesc = pow(M/1e10,Alpha_esc);
+
+  if (Fstar > 1./Fstar10) Fstar = 1./Fstar10;
+  else if (Fstar < 0.) Fstar = FRACT_FLOAT_ERR;
+
+  if (Fesc > 1./Fstar10) Fesc = 1./Fesc10;
+  else if (Fstar < 0.) Fesc = FRACT_FLOAT_ERR;
+
+  sources s;
+  s = defaultSources();
+
+  return zeta_at_M(s, z, M) * M*dNdM_conditional_second(z,log(M),M2,del1,del2)/sqrt(2.*PI);
+
+}
+
+double zeta_SFR(double z, double M1, double M2, double delta1, double delta2, double MassTurnover, double Alpha_star, double Alpha_esc, double Fstar10, double Fesc10)
+{
+    double result, error, lower_limit, upper_limit;
+    gsl_function F;
+    double rel_tol = 0.005; //<- relative tolerance
+    gsl_integration_workspace * w
+    = gsl_integration_workspace_alloc (1000);
+    //printf("FgtrConditionalM_SFR start\n");
+
+    struct parameters_gsl_SFR_con_int_ parameters_gsl_SFR_con = {
+        .z_obs = z,
+        .Mval = M2,
+        .delta1 = delta1,
+        .delta2 = delta2,
+        .Mdrop = MassTurnover,
+        .pl_star = Alpha_star,
+        .pl_esc = Alpha_esc,
+    .frac_star = Fstar10,
+    .frac_esc = Fesc10
+    };
+
+    F.function = &dzetalnM_SFR;
+    F.params = &parameters_gsl_SFR_con;
+    lower_limit = M1;
+    upper_limit = M2;
+
+    gsl_integration_qag (&F, lower_limit, upper_limit, 0, rel_tol,
+                        1000, GSL_INTEG_GAUSS61, w, &result, &error);
+    gsl_integration_workspace_free (w);
+
+    //printf("FgtrConditionalM_SFR end\n");
+    if(delta2 >= delta1) {
+        result = 1.0;
+        return result / zeta_denom(z, exp(M1), M2, delta1, delta2, 1);
+    }
+    else {
+        return result / zeta_denom(z, exp(M1), M2, delta1, delta2, 1); //bug is here (in zeta_denom?)
+    }
+}
+
+void initialisezetaSFR_spline(float z, float Mmax, float MassTurnover, float Alpha_star, float Alpha_esc, float Fstar10, float Fesc10, float Mlim_Fstar, float Mlim_Fesc)
+{
+    //double overdense_val,overdense_small_low,overdense_small_high,overdense_large_low,overdense_large_high;
+    double overdense_val;
+    double overdense_large_high = Deltac, overdense_large_low = 1.5;
+    double overdense_small_high = 1.5, overdense_small_low = -1. + 9e-8;
+    int i;
+    zetaLow_spline_acc = gsl_interp_accel_alloc ();
+    zetaLow_spline = gsl_spline_alloc (gsl_interp_cspline, NSFR_low);
+
+    for (i=0; i<NSFR_low; i++){
+
+        overdense_val = log10(1. + overdense_small_low) + (double)i/((double)NSFR_low-1.)*(log10(1.+overdense_small_high)-log10(1.+overdense_small_low));
+        
+        log10_overdense_spline_SFR[i] = overdense_val;
+        log10_zeta_spline_SFR[i] = log10(GaussLegendreQuad_zetaSFR(NGL_SFR,z,log(Mmax),Deltac,pow(10.,overdense_val)-1.,MassTurnover,Alpha_star,Alpha_esc,Fstar10,Fesc10));
+
+
+        if(log10_zeta_spline_SFR[i] < -40.){
+            log10_zeta_spline_SFR[i] = -40.;
+        }
+    }
+    gsl_spline_init(zetaLow_spline, log10_overdense_spline_SFR, log10_zeta_spline_SFR, NSFR_low);
+    for(i=0;i<NSFR_high;i++) {
+
+        Overdense_spline_SFR[i] = overdense_large_low + (float)i/((float)NSFR_high-1.)*(overdense_large_high - overdense_large_low);
+        printf("12345\n");
+        zeta_spline_SFR[i] = zeta_SFR(z,log(MassTurnover),log(Mmax),Deltac,Overdense_spline_SFR[i],MassTurnover,Alpha_star,Alpha_esc,Fstar10,Fesc10);
+        if(zeta_spline_SFR[i]<0.) {
+            zeta_spline_SFR[i]=pow(10.,-40.0);
+        }
+    }
+    spline(Overdense_spline_SFR-1,zeta_spline_SFR-1,NSFR_high,0,0,zeta_second_derivs_SFR-1);
+}
+
+void zetaSpline_SFR(float Overdensity, float *splined_value)
+{
+    int i;
+    float returned_value;
+
+    if(Overdensity<1.5) {
+        if(Overdensity<-1.) {
+            returned_value = 0;
+        }
+        else {
+            returned_value = gsl_spline_eval(zetaLow_spline, log10(Overdensity+1.), zetaLow_spline_acc);
+            returned_value = pow(10.,returned_value);
+        }
+    }
+    else {
+        if(Overdensity<Deltac) {
+            splint(Overdense_spline_SFR-1,zeta_spline_SFR-1,zeta_second_derivs_SFR-1,NSFR_high,Overdensity,&(returned_value));
+        }
+        else {
+            returned_value = 1.;
+        }
+    }
+  if(returned_value > 1.) returned_value = 1.;
+    *splined_value = returned_value;
 
 }
 

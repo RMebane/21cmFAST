@@ -24,27 +24,45 @@
   to a threshold halo mass, M_TURNOVER, is recovered by setting *_PL parameters to zero.
   This results in the fastest runs.
 ***********************************************/
+// - RM read param from file
+double get_param(char* f, int ind)
+{
+  FILE *fin;
+  fin = fopen(f, "r");
+  double x;
+  int i;
+  for(i=0; i<=ind; i++) fscanf(fin, "%lf", &x);
+  fclose(fin);
+  return x;
+}
+
+#define N_GAMMA_UV (float) (get_param("/Users/rickmebane/21cmFAST/Parameter_files/test.dat",1))
+#define STELLAR_BARYON_FRAC (double) (get_param("/Users/rickmebane/21cmFAST/Parameter_files/test.dat",2))
+#define STELLAR_BARYON_PL (double) (get_param("/Users/rickmebane/21cmFAST/Parameter_files/test.dat",3))
+#define ESC_FRAC (double) (get_param("/Users/rickmebane/21cmFAST/Parameter_files/test.dat",4))
+#define ESC_PL (double) (get_param("/Users/rickmebane/21cmFAST/Parameter_files/test.dat",5))
+#define M_TURNOVER (double) (get_param("/Users/rickmebane/21cmFAST/Parameter_files/test.dat",6))
+
+/*
 #define N_GAMMA_UV (float) (5000) // number of ionizing photons per stellar baryon
 #define STELLAR_BARYON_FRAC (double) (0.05) // defined for 10^10 Msun halos
 #define STELLAR_BARYON_PL (double) (0.5) //power law index w/ halo mass
 #define ESC_FRAC (double) (0.1) // ionizing escape fraction, defined for 10^10 Msun halos
 #define ESC_PL (double) (-0.5) //power law index w/ halo mass
-#define M_TURNOVER (double) (5e8) // Halo mass threshold for efficient star formation (in Msun). 
-
+#define M_TURNOVER (double) (5e8) // Halo mass threshold for efficient star formation (in Msun). */
 
 /*
   Use the generalized source presciptions in SOURCES.H if 1
-  Have to set SHARP_CUTOFF = 1 for now
   -RM
 */
-#define USE_GENERAL_SOURCES (int) (0)
+#define USE_GENERAL_SOURCES (int) (get_param("/Users/rickmebane/21cmFAST/Parameter_files/test.dat",10))
 
 /*
   Set radio background temp to this fraction of ARCADE 2's measurement.
   If 0, will just use CMB temp
   - RM
 */
-#define RADIO_EXCESS_FRAC (double) (0.0)
+#define RADIO_EXCESS_FRAC (double) (0.00)
 
 /*
   This version still keeps support for the constant ionizing efficiency with sharp cut-off for minimum halo mass.

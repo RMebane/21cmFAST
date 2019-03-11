@@ -8,6 +8,7 @@
 #include "../Parameter_files/INIT_PARAMS.H"
 #include "../Parameter_files/ANAL_PARAMS.H"
 #include "../Parameter_files/HEAT_PARAMS.H"
+#include "../Parameter_files/SOURCES.H"
 
 /*
   Program DRIVE_ZSCROLL.C scrolls through the redshifts defined in ANAL_PARAMS.H creating halo, velocity, density, and ionization fields
@@ -23,7 +24,6 @@ int main(int argc, char ** argv){
   FILE *LOG;
   time_t start_time, curr_time;
   int status;
-
 
 
   time(&start_time);
@@ -62,7 +62,7 @@ int main(int argc, char ** argv){
 
   fprintf(stderr, "Calling init to set up the initial conditions\n");
   fprintf(LOG, "Calling init to set up the initial conditions\n");
-  system("./init"); // you only need this call once per realization
+  //system("./init"); // you only need this call once per realization
 
   Z = ZLOW*1.0001; // match rounding convention from Ts.c
 

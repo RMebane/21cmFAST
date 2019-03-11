@@ -120,7 +120,7 @@ double freq_int_heat[NUM_FILTER_STEPS_FOR_Ts], freq_int_ion[NUM_FILTER_STEPS_FOR
  int counter,arr_num; // New in v1.4
  double Luminosity_conversion_factor;
  int RESTART = 0;
-
+double Tback;
 printf("0\n");
  /**********  BEGIN INITIALIZATION   **************************************/
  //New in v1.4
@@ -194,15 +194,18 @@ printf("10\n");
  REDSHIFT = atof(argv[1]);
 
 init_ps();
- if(USE_GENERAL_SOURCES) ION_EFF_FACTOR = ionEff(REDSHIFT, src);
+// - RM
+ //if(USE_GENERAL_SOURCES) ION_EFF_FACTOR = ionEff(REDSHIFT, src);
 printf("11\n");
  // Set Min Mass if necessary - RM
+/*
  if(USE_GENERAL_SOURCES)
  {
      if(src.minMassIII(REDSHIFT) > src.minMass(REDSHIFT)
          || src.minMassIII(REDSHIFT) < 0) M_MIN = src.minMass(REDSHIFT);
      else M_MIN = src.minMassIII(REDSHIFT);
- }
+ }*/
+if(USE_GENERAL_SOURCES) M_MIN = src.minMass(REDSHIFT);
 
  printf("1\n");
 
@@ -485,8 +488,6 @@ printf("11\n");
     x_e_ave = xe_BC;
     Tk_ave = Tk_BC;
 
-    // - RM
-    printf("1. %le\n", Tk_ave);
 
     printf("Starting at at z_max=%f, Tk=%f, x_e=%e\n", Z_HEAT_MAX, Tk_ave, x_e_ave);
   }
@@ -558,8 +559,6 @@ printf("11\n");
     }
     Tk_ave /= (double) HII_TOT_NUM_PIXELS;
 
-    // - RM
-    printf("2. %le\n", Tk_ave);
 
     x_e_ave /= (double) HII_TOT_NUM_PIXELS;
     fprintf(stderr, "Rebooting from z'=%f output. <Tk> = %f. <xe> = %e\n", zp, Tk_ave, x_e_ave);
@@ -658,18 +657,19 @@ printf("11\n");
 	
   }
   
-    printf("5\n");
   counter = 0;
-  printf("%lf %lf\n", zp, REDSHIFT);
   while (zp > REDSHIFT){
- if(USE_GENERAL_SOURCES) ION_EFF_FACTOR = ionEff(zp, src);
+      Tback = T_background(0, 0, zp);
 
- if(USE_GENERAL_SOURCES)
- {
-     if(src.minMassIII(zp) > src.minMass(zp)
-         || src.minMassIII(zp) < 0) M_MIN = src.minMass(zp);
-     else M_MIN = src.minMassIII(zp);
- }
+// - RM
+ //if(USE_GENERAL_SOURCES) ION_EFF_FACTOR = ionEff(zp, src);
+
+ //if(USE_GENERAL_SOURCES)
+ //{
+ //    if(src.minMassIII(zp) > src.minMass(zp)
+ //        || src.minMassIII(zp) < 0) M_MIN = src.minMass(zp);
+ //    else M_MIN = src.minMassIII(zp);
+ //}
 
 
 
@@ -939,11 +939,12 @@ printf("COMPUTE_Ts = %d\n",COMPUTE_Ts);
       if (Tk_box[box_ct] < MAX_TK)
 	Tk_box[box_ct] += dansdz[1] * dzp;
 
-
       if (Tk_box[box_ct]<0){ // spurious bahaviour of the trapazoidalintegrator. generally overcooling in underdensities
 	Tk_box[box_ct] = T_cmb*(1+zp);
-    Tk_box[box_ct] = T_background(T_cmb, RADIO_EXCESS_FRAC, zp);
+    //Tk_box[box_ct] = T_background(T_cmb, RADIO_EXCESS_FRAC, zp);
+    Tk_box[box_ct] = Tback; 
       }
+
       if (COMPUTE_Ts){
 	J_alpha_tot = dansdz[2]; //not really d/dz, but the lya flux
 	Ts[box_ct] = get_Ts(zp, curr_delNL0[0]*growth_factor_zp,
@@ -954,7 +955,9 @@ printf("COMPUTE_Ts = %d\n",COMPUTE_Ts);
 	Xion_threads[omp_get_thread_num()] += dansdz[4];
       }
     }
+
     } // end parallelization pragma
+
 
 /***************  END PARALLELIZED LOOP ******************************************************************/
     time(&curr_time);
@@ -980,8 +983,6 @@ printf("COMPUTE_Ts = %d\n",COMPUTE_Ts);
     x_e_ave /= (double)HII_TOT_NUM_PIXELS;
     Tk_ave /= (double)HII_TOT_NUM_PIXELS;
 
-    // - RM
-    printf("3. %le\n", Tk_ave);
 
     J_alpha_ave /= (double)HII_TOT_NUM_PIXELS;
     xalpha_ave /= (double)HII_TOT_NUM_PIXELS;
