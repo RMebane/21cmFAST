@@ -231,7 +231,6 @@ int main(int argc, char ** argv){
     }
   }
 
-  printf("%le %le %le\n", N_GAMMA_UV, STELLAR_BARYON_FRAC, STELLAR_BARYON_PL);
 
 
 /*  if ((fabs(ALPHA_STAR) > FRACT_FLOAT_ERR) ||
@@ -264,10 +263,14 @@ int main(int argc, char ** argv){
   else
     ION_EFF_FACTOR = N_GAMMA_UV * STELLAR_BARYON_FRAC * ESC_FRAC; // Constant ionizing efficiency parameter.
 
-  // compute ION_EFF_FACTOR if we are using sources defined in SOURCES.H - RM
-  // set equal to 1, since all the prefactors are now in the fcoll calculation
+  // compute average ION_EFF_FACTOR if we are using sources defined in SOURCES.H - RM
 
-  if (USE_GENERAL_SOURCES) ION_EFF_FACTOR = 1;
+  if (USE_GENERAL_SOURCES) 
+  {
+    ION_EFF_FACTOR = ionEff(REDSHIFT, src);
+    printf("%le\n", ION_EFF_FACTOR);
+    //ION_EFF_FACTOR = 1;
+  }
 
   // Set the minimum halo mass hosting ionizing source mass.
   // For constant ionizing efficiency parameter M_MIN is set to be M_TURN which is a sharp cut-off.
@@ -356,7 +359,7 @@ int main(int argc, char ** argv){
       if (USE_TS_IN_21CM){ // use the x_e box to set residuals
 		if(HALO_MASS_DEPENDENT_IONIZING_EFFICIENCY){ // New in v1.4
     	  sprintf(filename, "../Boxes/Ts_evolution/xeneutral_zprime%06.2f_L_X%.1e_alphaX%.1f_f_star10_%06.4f_alpha_star%06.4f_f_esc10_%06.4f_alpha_esc%06.4f_Mturn%.1e_t_star%06.4f_Pop%i_%i_%.0fMpc", REDSHIFT, X_LUMINOSITY, X_RAY_SPEC_INDEX, F_STAR10, ALPHA_STAR, F_ESC10, ALPHA_ESC, M_TURN, T_AST, Pop, HII_DIM, BOX_LEN); 
-		  printf("filename: %s\n",filename);
+		  ("filename: %s\n",filename);
 		}
 		else {
 		  sprintf(filename, "../Boxes/Ts_evolution/xeneutral_zprime%06.2f_L_X%.1e_alphaX%.1f_Mmin%.1e_zetaIon%.2f_Pop%i_%i_%.0fMpc", REDSHIFT, X_LUMINOSITY, X_RAY_SPEC_INDEX, M_MIN, HII_EFF_FACTOR, Pop, HII_DIM, BOX_LEN); 
