@@ -36,6 +36,12 @@ void init_21cmMC_arrays() { // defined in Cosmo_c_files/ps.c
     
     Overdense_spline_SFR = calloc(NSFR_high,sizeof(float)); // New in v1.4
     Fcoll_spline_SFR = calloc(NSFR_high,sizeof(float));
+    if(USE_GENERAL_SOURCES) 
+    {
+      printf("initialized zeta spline array\n");
+      zeta_spline_SFR = calloc(NSFR_high, sizeof(float));
+      zeta_second_derivs_SFR = calloc(NSFR_high, sizeof(float));
+    }
     second_derivs_SFR = calloc(NSFR_high,sizeof(float));
     xi_SFR = calloc((NGL_SFR+1),sizeof(float));
     wi_SFR = calloc((NGL_SFR+1),sizeof(float));
@@ -51,6 +57,11 @@ void destroy_21cmMC_arrays() {
 
     free(Overdense_spline_SFR); // New in v1.4
     free(Fcoll_spline_SFR);
+    if(USE_GENERAL_SOURCES) 
+    {
+      free(zeta_spline_SFR);
+      free(zeta_second_derivs_SFR);
+    }
     free(second_derivs_SFR);
     free(xi_SFR);
     free(wi_SFR);

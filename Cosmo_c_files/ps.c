@@ -1299,6 +1299,20 @@ double FgtrM_st_SFR(double z, double MassTurnover, double Alpha_star, double Alp
 //  gauleg(log(M_Min),log(M_Max),xi_SFR_zeta,wi_SFR_zeta,n);
 //}
 
+/*
+    double z_obs;
+    double Mval;
+    double delta1;
+    double delta2;
+    double Mdrop;
+    double pl_star;
+    double pl_esc;
+  double frac_star;
+  double frac_esc;
+  double LimitMass_Fstar;
+  double LimitMass_Fesc;
+*/
+
 double zeta_denom_integrand(double lnM, void *params)
 {
   struct parameters_gsl_SFR_con_int_ vals = *(struct parameters_gsl_SFR_con_int_ *)params;
@@ -1334,7 +1348,9 @@ double zeta_denom(double z, double M1, double M2, double delta1, double delta2, 
       .pl_star = 0,
       .pl_esc = 0,
       .frac_star = 0,
-      .frac_esc = 0
+      .frac_esc = 0,
+      .LimitMass_Fstar = 0,
+      .LimitMass_Fesc = 0
     };
 
     F.function = &zeta_denom_integrand;
@@ -1342,12 +1358,12 @@ double zeta_denom(double z, double M1, double M2, double delta1, double delta2, 
     lower_limit = log(M1);
     upper_limit = M2;
 
-    //testing...
-    //if(flag==1) printf("%le %le %le %le %le\n", z, log(M1), M2, delta1, delta2);
-
     gsl_integration_qag (&F, lower_limit, upper_limit, 0, rel_tol,
                         1000, GSL_INTEG_GAUSS61, w, &result, &error);
+    //testing...
     gsl_integration_workspace_free (w);
+    //if(flag==1) printf("%le %le %le %le %le\n", z, log(M1), M2, delta1, delta2);
+    //if(flag==1) printf("res = %le\n", result);
     return result;
 }
 
@@ -1447,7 +1463,7 @@ double dzetalnM_SFR(double lnM, void *params)
 
 double zeta_SFR(double z, double M1, double M2, double delta1, double delta2, double MassTurnover, double Alpha_star, double Alpha_esc, double Fstar10, double Fesc10)
 {
-    double result, error, lower_limit, upper_limit;
+    double result, error, lower_limit, upper_limit, res;
     gsl_function F;
     double rel_tol = 0.005; //<- relative tolerance
     gsl_integration_workspace * w
@@ -1481,7 +1497,8 @@ double zeta_SFR(double z, double M1, double M2, double delta1, double delta2, do
         return result / zeta_denom(z, exp(M1), M2, delta1, delta2, 1);
     }
     else {
-        return result / zeta_denom(z, exp(M1), M2, delta1, delta2, 1); //bug is here (in zeta_denom?)
+        res = result / zeta_denom(z, exp(M1), M2, delta1, delta2, 1); 
+        return res; //bug is here (in zeta_denom?)
     }
 }
 
@@ -1560,6 +1577,11 @@ double ionEff(double z, sources s)
     return resultEff / resultMf;
 }
 
+void print_arr(float* arr, int N)
+{
+  int i;
+  for(i=0; i<N; i++) printf("%e\n", arr[i]);
+}
 
 void initialisezetaSFR_spline(float z, float Mmax, float MassTurnover, float Alpha_star, float Alpha_esc, float Fstar10, float Fesc10, float Mlim_Fstar, float Mlim_Fesc)
 {
@@ -1588,10 +1610,12 @@ void initialisezetaSFR_spline(float z, float Mmax, float MassTurnover, float Alp
 
         Overdense_spline_SFR[i] = overdense_large_low + (float)i/((float)NSFR_high-1.)*(overdense_large_high - overdense_large_low);
         zeta_spline_SFR[i] = zeta_SFR(z,log(MassTurnover),log(Mmax),Deltac,Overdense_spline_SFR[i],MassTurnover,Alpha_star,Alpha_esc,Fstar10,Fesc10);
+        if(i == NSFR_high - 1) zeta_spline_SFR[i] = zeta_SFR(z,log(MassTurnover),log(Mmax),Deltac,Overdense_spline_SFR[i-1],MassTurnover,Alpha_star,Alpha_esc,Fstar10,Fesc10);
         if(zeta_spline_SFR[i]<0.) {
             zeta_spline_SFR[i]=pow(10.,-40.0);
         }
     }
+    //print_arr(zeta_spline_SFR, NSFR_high);
     spline(Overdense_spline_SFR-1,zeta_spline_SFR-1,NSFR_high,0,0,zeta_second_derivs_SFR-1);
 }
 
