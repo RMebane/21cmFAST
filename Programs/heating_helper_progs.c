@@ -349,7 +349,7 @@ void evolveInt(float zp, float curr_delNL0[], double freq_int_heat[],
           // Usage of 0.99*Deltac arises due to the fact that close to the critical density, the collapsed fraction becomes a little unstable
           // However, such densities should always be collapsed, so just set f_coll to unity. 
           // Additionally, the fraction of points in this regime relative to the entire simulation volume is extremely small.
-          splint(Overdense_high_table-1,Fcollz_SFR_high_table[arr_num + zpp_ct]-1,second_derivs_Fcoll_zpp[arr_num + zpp_ct]-1,NSFR_high,curr_delNL0[zpp_ct]*growth_zpp,&(fcoll));
+          splint(Overdense_high_table-1,Fcollz_SFR_high_table[arr_num + zpp_ct]-1,second_derivs_Fcoll_zpp[zpp_ct]-1,NSFR_high,curr_delNL0[zpp_ct]*growth_zpp,&(fcoll));
         }
         else {
           fcoll = 1.;

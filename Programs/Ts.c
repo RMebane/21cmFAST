@@ -761,7 +761,7 @@ printf("COMPUTE_Ts = %d\n",COMPUTE_Ts);
           // However, such densities should always be collapsed, so just set f_coll to unity. 
           // Additionally, the fraction of points in this regime relative to the entire simulation volume is extremely small.
 		  //New
-          splint(Overdense_high_table-1,Fcollz_SFR_high_table[arr_num + R_ct]-1,second_derivs_Fcoll_zpp[arr_num + R_ct]-1,NSFR_high,delNL0[R_ct][box_ct]*growth_zpp,&(fcoll));
+          splint(Overdense_high_table-1,Fcollz_SFR_high_table[arr_num + R_ct]-1,second_derivs_Fcoll_zpp[R_ct]-1,NSFR_high,delNL0[R_ct][box_ct]*growth_zpp,&(fcoll));
         }    
         else {
 		  fcoll = 1.;
