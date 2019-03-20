@@ -38,7 +38,7 @@ void init_21cmMC_arrays() { // defined in Cosmo_c_files/ps.c
     Fcoll_spline_SFR = calloc(NSFR_high,sizeof(float));
     if(USE_GENERAL_SOURCES) 
     {
-      printf("initialized zeta spline array\n");
+      //printf("initialized zeta spline array\n");
       zeta_spline_SFR = calloc(NSFR_high, sizeof(float));
       zeta_second_derivs_SFR = calloc(NSFR_high, sizeof(float));
     }
@@ -797,6 +797,7 @@ int main(int argc, char ** argv){
 	      else{
           // - RM
       if(USE_GENERAL_SOURCES) {
+        density_over_mean = 1.0 + *((float *)deltax_filtered + HII_R_FFT_INDEX(x,y,z)); 
         zetaSpline_SFR(density_over_mean - 1,&(Splined_zeta));
       }
 		density_over_mean = 1.0 + *((float *)deltax_filtered + HII_R_FFT_INDEX(x,y,z));	    
