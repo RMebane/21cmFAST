@@ -31,7 +31,6 @@ double minMassATC(double z)
 }
 
 // initialize source struct
-// if not using Pop III stars, make minMassIII(z) = -1
 sources setSources(double (*fesc)(double, double),
                    double (*Nion)(double, double),
                    double (*fstar)(double, double),
@@ -227,7 +226,7 @@ double fstarSteveMom(double z, double M)
 }
 
 // source functions for comparing with sharp cutoff model
-double minMassCutoff(double z) {return 1e7;}
+double minMassCutoff(double z) {return 5e8;}
 double NionCutoff(double z, double M) {return 5000;}
 double fescCutoff(double z, double M) {return 0.1;}
 double fstarCutoff(double z, double M) {return 0.05;}
