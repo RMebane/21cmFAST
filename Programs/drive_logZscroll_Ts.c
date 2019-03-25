@@ -62,7 +62,7 @@ int main(int argc, char ** argv){
 
   fprintf(stderr, "Calling init to set up the initial conditions\n");
   fprintf(LOG, "Calling init to set up the initial conditions\n");
-  //system("./init"); // you only need this call once per realization
+  system("./init"); // you only need this call once per realization
 
   Z = ZLOW*1.0001; // match rounding convention from Ts.c
 

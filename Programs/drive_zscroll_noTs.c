@@ -51,7 +51,7 @@ int main(int argc, char ** argv){
 
   fprintf(stderr, "Calling init to set up the initial conditions\n");
   fprintf(LOG, "Calling init to set up the initial conditions\n");
-  //system("./init"); // you only need this call once per realization
+  system("./init"); // you only need this call once per realization
 
   Z = ZSTART;
   while (Z > (ZEND-0.0001)){
