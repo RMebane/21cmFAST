@@ -684,7 +684,6 @@ if(USE_GENERAL_SOURCES) M_MIN = src.minMass(REDSHIFT);
     // check if we will next compute the spin temperature (i.e. if this is the final zp step)
     if (Ts_verbose || (((1+zp) / ZPRIME_STEP_FACTOR) < (REDSHIFT+1)) )
       COMPUTE_Ts = 1;
-printf("COMPUTE_Ts = %d\n",COMPUTE_Ts);
     // check if we are in the really high z regime before the first stars..
 	if (HALO_MASS_DEPENDENT_IONIZING_EFFICIENCY) { // New in v1.4
 	  FgtrM_st_SFR_z(zp,&(Splined_Fcollzp_mean));
