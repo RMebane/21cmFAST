@@ -40,7 +40,7 @@ int init_heat();
 void destruct_heat(); 
 
  /* returns the spectral emissity */
-double spectral_emissivity(double nu_norm, int flag);
+double spectral_emissivity(double nu_norm, int flag, int stellar_pop);
 
 /* Ionization fraction from RECFAST. */
 double xion_RECFAST(float z, int flag);
@@ -117,7 +117,7 @@ int init_heat()
     return -4;
   if (xion_RECFAST(100, 1) < 0)
     return -5;
-  if (spectral_emissivity(0,1) < 0)
+  if (spectral_emissivity(0,1,2) < 0)
     return -6;
 
   initialize_interp_arrays();
@@ -133,7 +133,7 @@ void destruct_heat()
   kappa_10_pH(1.0,2);
   T_RECFAST(100.0,2);
   xion_RECFAST(100.0,2);
-  spectral_emissivity(0.0, 2);
+  spectral_emissivity(0.0, 2, 2);
 }
 
 
@@ -233,7 +233,7 @@ double frecycle(int n)
 
 /* Reads in and constructs table of the piecewise power-law fits to Pop 2 and 
  * Pop 3 stellar spectra, from Barkana */
-double spectral_emissivity(double nu_norm, int flag)
+double spectral_emissivity(double nu_norm, int flag, int stellar_pop)
 {
   static int n[NSPEC_MAX];
   static float nu_n[NSPEC_MAX], alpha_S_2[NSPEC_MAX];
@@ -276,7 +276,7 @@ double spectral_emissivity(double nu_norm, int flag)
     //    printf("checking between %e and %e\n", nu_n[i], nu_n[i+1]);
     if ((nu_norm >= nu_n[i]) && (nu_norm < nu_n[i+1])) {
       // We are in the correct spectral region
-      if (Pop == 2)
+      if (stellar_pop == 2)
 	ans = N0_2[i]*pow(nu_norm,alpha_S_2[i]);
       else
 	ans = N0_3[i]*pow(nu_norm,alpha_S_3[i]);
@@ -286,11 +286,82 @@ double spectral_emissivity(double nu_norm, int flag)
   }
 
   i= NSPEC_MAX-1;
-  if (Pop == 2)
+  if (stellar_pop == 2)
     return  N0_2[i]*pow(nu_norm,alpha_S_2[i])/Ly_alpha_HZ;
   else
     return N0_3[i]*pow(nu_norm,alpha_S_3[i])/Ly_alpha_HZ;
   //  return 0;
+}
+
+// returns average value of spectral emissivity for given source population defined in SOURCES.H
+// params struct for integration
+struct parameters_gsl_emis_int_{
+    sources s;
+    double z;
+    double nu_norm;
+};
+
+//integrand for spectral emissivity
+double emisIntegrand(double lnM, void *params)
+{
+    sources s;
+    double z, M, nu_norm;
+    struct parameters_gsl_emis_int_ vals = 
+        *(struct parameters_gsl_emis_int_ *)params;
+    s = vals.s;
+    z = vals.z;
+    nu_norm = vals.nu_norm;
+    M = exp(lnM);
+    // this is a Pop II star forming halo
+    if(M >= s.minMass(z))
+    {
+      if(M >= minMassATC(z)) return spectral_emissivity(nu_norm, 0, 2);
+      return spectral_emissivity(nu_norm, 0, 3);
+    }
+        
+    // this halo is below the minimum mass
+    return 0.0;
+}
+  
+
+
+// integrate over the mass function to calculate average spectral emissivity
+// for the given source popultion
+double spec_emis_avg(double z, sources s, double nu_norm)
+{
+    double rel_tol, lower_limit, upper_limit;
+    double resultNum, resultMf, error, test;
+    gsl_function F;
+
+    rel_tol = 0.001;
+
+    lower_limit = log(s.minMass(z));
+    upper_limit = log(FMAX(1.0e16, 100*exp(lower_limit)));
+
+    gsl_integration_workspace * w = gsl_integration_workspace_alloc(1000);
+
+    struct parameters_gsl_emis_int_ parameters_gsl_emis = {
+        .s = s,
+        .z = z,
+        .nu_norm = nu_norm,
+    };
+
+    F.function = &emisIntegrand;
+    F.params = &parameters_gsl_emis;
+
+    gsl_integration_qag(&F, lower_limit, upper_limit, 0, rel_tol, 1000, 
+                        GSL_INTEG_GAUSS61, w, &resultNum, &error);
+
+    F.function = &massFuncInt;
+    F.params = &z;
+
+
+    gsl_integration_qag(&F, lower_limit, upper_limit, 0, rel_tol, 1000,
+                        GSL_INTEG_GAUSS61, w, &resultMf, &error);
+
+    gsl_integration_workspace_free(w);
+
+    return resultNum / resultMf;
 }
 
 /********************************************************************

@@ -195,8 +195,8 @@ printf("10\n");
 
 init_ps();
 // - RM
- //if(USE_GENERAL_SOURCES) ION_EFF_FACTOR = ionEff(REDSHIFT, src);
-printf("11\n");
+ if(USE_GENERAL_SOURCES) ION_EFF_FACTOR = 1.0;
+//printf("11\n");
  // Set Min Mass if necessary - RM
 /*
  if(USE_GENERAL_SOURCES)
@@ -373,8 +373,7 @@ if(USE_GENERAL_SOURCES) M_MIN = src.minMass(REDSHIFT);
     }
   }
   fclose(F);
-    
-  printf("3\n");
+  
 
   /*** Transform unfiltered box to k-space to prepare for filtering ***/
   fprintf(stderr, "begin initial ffts, time=%06.2f min\n", (double)clock()/CLOCKS_PER_SEC/60.0);
@@ -828,7 +827,8 @@ printf("COMPUTE_Ts = %d\n",COMPUTE_Ts);
 	  continue;
 
 	nuprime = nu_n(n_ct)*(1+zpp)/(1.0+zp);
-	sum_lyn[R_ct] += frecycle(n_ct) * spectral_emissivity(nuprime, 0);
+  if(USE_GENERAL_SOURCES) sum_lyn[R_ct] += frecycle(n_ct) * spec_emis_avg(zpp, src, nuprime);
+	else sum_lyn[R_ct] += frecycle(n_ct) * spectral_emissivity(nuprime, 0, Pop);
       }
     } // end loop over R_ct filter steps
     time(&curr_time);

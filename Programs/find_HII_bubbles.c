@@ -278,9 +278,9 @@ int main(int argc, char ** argv){
 
   if (USE_GENERAL_SOURCES) 
   {
-    ION_EFF_FACTOR = ionEff(REDSHIFT, src);
-    printf("%le\n", ION_EFF_FACTOR);
-    //ION_EFF_FACTOR = 1;
+    //ION_EFF_FACTOR = ionEff(REDSHIFT, src);
+    //printf("%le\n", ION_EFF_FACTOR);
+    ION_EFF_FACTOR = 1;
   }
 
   // Set the minimum halo mass hosting ionizing source mass.
@@ -294,6 +294,8 @@ int main(int argc, char ** argv){
   else {
     M_MIN = M_TURNOVER;
   }
+
+  if(USE_GENERAL_SOURCES) M_MIN = src.minMass(REDSHIFT);
 
   // Set minimum mass if we are using sources defined in SOURCES.H - RM
   //if (USE_GENERAL_SOURCES)
@@ -358,7 +360,7 @@ int main(int argc, char ** argv){
     mean_f_coll_st = FgtrM_st(REDSHIFT, M_MIN);
   }
   // - RM
-  X_LUMINOSITY = 3.2e40;
+  //X_LUMINOSITY = 3.2e40;
     /**********  CHECK IF WE ARE IN THE DARK AGES ******************************/
     // lets check if we are going to bother with computing the inhmogeneous field at all...
     if ((mean_f_coll_st*ION_EFF_FACTOR < HII_ROUND_ERR)){ // way too small to ionize anything...//New in v1.4
@@ -770,14 +772,15 @@ int main(int argc, char ** argv){
 	temparg =  2*(pow(sigma_z0(M_MIN), 2) - pow(sigma_z0(massofscaleR), 2) );
 	erfc_denom = sqrt(temparg);
 	if(HALO_MASS_DEPENDENT_IONIZING_EFFICIENCY) { // New in v1.4
-	  initialiseGL_FcollSFR(NGL_SFR, M_MIN/50.0, massofscaleR);
+	  initialiseGL_FcollSFR(NGL_SFR, M_MIN/50.0, massofscaleR, REDSHIFT);
 	  initialiseFcollSFR_spline(REDSHIFT, massofscaleR,M_TURN,ALPHA_STAR,ALPHA_ESC,F_STAR10,F_ESC10,Mlim_Fstar,Mlim_Fesc);
     // - RM
+    /*
     if(USE_GENERAL_SOURCES)
     {
       //initialiseGL_zetaSFR(NGL_SFR, M_MIN/50.0, massofscaleR);
       initialisezetaSFR_spline(REDSHIFT, massofscaleR,M_TURN,ALPHA_STAR,ALPHA_ESC,F_STAR10,F_ESC10,Mlim_Fstar,Mlim_Fesc);
-    }
+    }*/
 	}
 
 	for (x=0; x<HII_DIM; x++){
@@ -787,19 +790,21 @@ int main(int argc, char ** argv){
 		Splined_Fcoll = *((float *)M_coll_filtered + HII_R_FFT_INDEX(x,y,z)) / (massofscaleR*density_over_mean);
 		Splined_Fcoll *= (4/3.0)*PI*pow(R,3) / pixel_volume;
     // - RM
+    /*
     if(USE_GENERAL_SOURCES)
     {
       Splined_zeta = *((float *)M_coll_filtered + HII_R_FFT_INDEX(x,y,z)) / (massofscaleR*density_over_mean);
       Splined_zeta *= (4/3.0)*PI*pow(R,3) / pixel_volume;
-    }
+    }*/
 	      }
 	    
 	      else{
           // - RM
+          /*
       if(USE_GENERAL_SOURCES) {
         density_over_mean = 1.0 + *((float *)deltax_filtered + HII_R_FFT_INDEX(x,y,z)); 
         zetaSpline_SFR(density_over_mean - 1,&(Splined_zeta));
-      }
+      }*/
 		density_over_mean = 1.0 + *((float *)deltax_filtered + HII_R_FFT_INDEX(x,y,z));	    
 		if ( (density_over_mean - 1) < Deltac){ // we are not resolving collapsed structures
 		  if (HALO_MASS_DEPENDENT_IONIZING_EFFICIENCY) { // New in v1.4
@@ -821,11 +826,13 @@ int main(int argc, char ** argv){
 	      Fcoll[HII_R_FFT_INDEX(x,y,z)] = Splined_Fcoll;
 	      f_coll += Splined_Fcoll;	  
         // - RM
+        /*
         if(USE_GENERAL_SOURCES)
         {
           Fcoll[HII_R_FFT_INDEX(x,y,z)] = Splined_Fcoll * Splined_zeta;
-          f_coll += Splined_Fcoll * Splined_zeta;
-        }  
+          //if(x == 0 && y == 0 && z == 0) printf("Fcoll, zeta = %le %le\n", Splined_Fcoll, Splined_zeta);
+          f_coll += Splined_Fcoll;
+        }  */
 	    }
 	  }
 	} //  end loop through Fcoll box
@@ -881,8 +888,8 @@ int main(int argc, char ** argv){
 
 	    // check if fully ionized!
       //printf("F_COLL ZETA = %le\n", f_coll);
-	    if ( (f_coll*ION_EFF_FACTOR > xHI_from_xrays*(1.0+rec)) ){ //IONIZED!! //New in v1.4
-	    
+	    //if ( (f_coll*ION_EFF_FACTOR > xHI_from_xrays*(1.0+rec) && !(USE_GENERAL_SOURCES)) || (f_coll > xHI_from_xrays*(1.0 + rec) && (USE_GENERAL_SOURCES)) ){ //IONIZED!! //New in v1.4
+	    if ( (f_coll*ION_EFF_FACTOR > xHI_from_xrays*(1.0+rec))) { //IONIZED!! //New in v1.4
 	      // if this is the first crossing of the ionization barrier for this cell (largest R), record the gamma
 	      // this assumes photon-starved growth of HII regions...  breaks down post EoR
 	      if (INHOMO_RECO && (xH[HII_R_INDEX(x, y, z)] > FRACT_FLOAT_ERR) ){
@@ -922,6 +929,7 @@ int main(int argc, char ** argv){
 	      }
 	      
 	      res_xH = xHI_from_xrays - f_coll * ION_EFF_FACTOR;
+        //if(USE_GENERAL_SOURCES) res_xH = xHI_from_xrays - f_coll;
 	      // and make sure fraction doesn't blow up for underdense pixels
 	      if (res_xH < 0)
 		res_xH = 0;

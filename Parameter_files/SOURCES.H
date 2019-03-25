@@ -66,12 +66,6 @@ double zeta_at_M(sources s, double z, double M)
     return 1.22 * s.fstar(z, M) * s.fesc(z, M) * s.Nion(z, M);
 }
 
-// params struct for integration
-/*
-struct parameters_gsl_ionEff_int_{
-    sources s;
-    double z;
-};*/
 
 /*
 // initialize source struct
@@ -100,83 +94,7 @@ sources setSources(double (*fesc)(double, double),
 // initialize source struct for general case
 //sources2 setSources(double ())
 
-/*
-//integrand for ionEff
-// returns dn/dlnM * fesc * fstar * Nion * A_He
-double ionEffIntegrand(double lnM, void *params)
-{
-    sources s;
-    double A_He, z, M;
-    struct parameters_gsl_ionEff_int_ vals = 
-        *(struct parameters_gsl_ionEff_int_ *)params;
-    s = vals.s;
-    z = vals.z;
-    M = exp(lnM);
-    A_He = 1.22;
-    // this is a Pop II star forming halo
-    if(M >= s.minMass(z))
-        return A_He * s.fstar(z, M) * s.fesc(z, M) * s.Nion(z, M) 
-               * dNdM_st(z, M) * M;
-    // this is a Pop III star forming halo
-    else if (M >= s.minMassIII(z) && s.minMassIII(z) > 0)
-        return A_He * s.fstarIII(z, M) * s.fescIII(z, M) * s.NionIII(z, M) 
-               * dNdM_st(z, M) * M;
-    // this halo is below the minimum mass
-    return 0.0;
-}
-    
-// integrand for integral over mass function
-double massFuncInt(double lnM, void *params)
-{
-    double z, M;
-    z = *(double *)params;
-    M = exp(lnM);
-    return dNdM_st(z, M) * M;
-}
 
-
-// integrate over the mass function to calculate average ionizing efficiency
-// for the given source popultion
-double ionEff(double z, sources s)
-{
-    double mMinII, mMinIII, A_He, rel_tol, lower_limit, upper_limit;
-    double resultEff, resultMf, error, test;
-    gsl_function F;
-
-    rel_tol = 0.001;
-    mMinII = s.minMass(z);
-    mMinIII = s.minMassIII(z);
-
-    if(mMinIII < 0 || mMinIII >= mMinII) lower_limit = log(mMinII);
-    else lower_limit = log(mMinIII);
-    upper_limit = log(FMAX(1.0e16, exp(lower_limit)));
-    upper_limit = log(1.0e13);
-
-    gsl_integration_workspace * w = gsl_integration_workspace_alloc(1000);
-
-    struct parameters_gsl_ionEff_int_ parameters_gsl_ionEff = {
-        .s = s,
-        .z = z,
-    };
-
-    F.function = &ionEffIntegrand;
-    F.params = &parameters_gsl_ionEff;
-
-    gsl_integration_qag(&F, lower_limit, upper_limit, 0, rel_tol, 1000, 
-                        GSL_INTEG_GAUSS61, w, &resultEff, &error);
-
-    F.function = &massFuncInt;
-    F.params = &z;
-
-
-    gsl_integration_qag(&F, lower_limit, upper_limit, 0, rel_tol, 1000,
-                        GSL_INTEG_GAUSS61, w, &resultMf, &error);
-
-    gsl_integration_workspace_free(w);
-
-    printf("%le\n", resultEff / resultMf);
-    return resultEff / resultMf;
-}*/
 
 // BEGIN SPECIFIC SOURCE FUNCTIONS
 
@@ -351,32 +269,80 @@ double fesc_21cmfid(double z, double M)
     return 0.1 * pow(M / 1.0e10, -0.4);
 }
 
-double fescDef(double z, double M) {return 0.1;}//{return 0.1 * pow(M / 1.0e10, -0.4);}
+//double fescDef(double z, double M) {return 0.1;}//{return 0.1 * pow(M / 1.0e10, -0.4);}
 //double fescIIIDef(double z, double M) {return 0.5;}//{return 1.0;}
 //double NionDef(double z, double M) {return 5000.0;}
 //double NionIIIDef(double z, double M) {return 40000.0;}
 //double fstarDef(double z, double M) {return 0.03 * pow(M / 1.0e10, 0.4);}
 //double fstarIIIDef(double z, double M) {return 0.0005;}//{return 1.0e-4;}
 //double minMassIIIDef(double z) {return -1;}//{return minMassATC(z) / 10.0;}
-double minMassDef(double z) {return 1.0e8;}//{return minMassATC(z);}//{return 1.0e8;}
-double fxDef(double z, double M) {return 1;}
+//double minMassDef(double z) {return 1.0e8;}//{return minMassATC(z);}//{return 1.0e8;}
+double fxDef(double z, double M)
+{
+    if(M > minMassATC(z)) return 1.0;
+    return 100.0;
+}
+
+double minMassDef(double z)
+{
+    //return 1.0e4;
+    return pow(10.0, -3.0/44.0 * z + 8.4); // linear fit to fiducial min mass in log space
+}
 
 double NionDef(double z, double M)
 {
-    if(M > 1.0e8) return 5000.0;
+    if(M > minMassATC(z)) return 5000.0;
     return 40000.0;
 }
 
 double fstarDef(double z, double M)
 {
-    if(M > 1.0e8) return 0.03 * pow(M / 1.0e10, 0.4);
+    if(M > minMassATC(z)) return 0.03 * pow(M / 1.0e10, 0.4);
     return 0.0005;
 }
+
+double fstarTest(double z, double M)
+{
+    if(M > 1.0e8) return 0.05;
+    return 0.005;
+}
+
+double fescDef(double z, double M)
+{
+    if(M > minMassATC(z)) return 0.1;
+    return 1.0;
+}
+
+double etaSteveEnergy(double z, double M)
+{
+    return pow(pow(10, 11.5) / M, 2.0/3.0) * 9.0 / (1.0 + z);
+}
+
+double fstarSteveEnergy(double z, double M)
+{
+    return 1.0 / (1.0 + etaSteveEnergy(z, M));
+}
+
+double etaSteveMom(double z, double M)
+{
+    return 0.2 * pow(pow(10, 11.5) / M, 1.0/3.0) * pow(9.0 / (1.0 + z), 1.0/2.0);
+}
+
+double fstarSteveMom(double z, double M)
+{
+    return 1.0 / (1.0 + etaSteveMom(z, M));
+}
+
+double minMassCutoff(double z) {return 1e7;}
+double NionCutoff(double z, double M) {return 5000;}
+double fescCutoff(double z, double M) {return 0.1;}
+double fstarCutoff(double z, double M) {return 0.05;}
+
 
 sources defaultSources()
 {
     sources s;
-    s = setSources(fescDef, NionDef, fstarDef, fxDef, minMassDef);
+    s = setSources(fescDef, NionDef, fstarSteveEnergy, fxDef, minMassDef);
     return s;
 }
 
