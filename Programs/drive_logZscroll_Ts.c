@@ -19,6 +19,7 @@
 
 int main(int argc, char ** argv){
   //float Z, M, M_MIN, nf;
+  float M_MIN;
   float Z, M, nf;
   char cmnd[1000];
   FILE *LOG;
@@ -62,7 +63,7 @@ int main(int argc, char ** argv){
 
   fprintf(stderr, "Calling init to set up the initial conditions\n");
   fprintf(LOG, "Calling init to set up the initial conditions\n");
-  system("./init"); // you only need this call once per realization
+  //system("./init"); // you only need this call once per realization
 
   Z = ZLOW*1.0001; // match rounding convention from Ts.c
 
@@ -93,6 +94,14 @@ int main(int argc, char ** argv){
 
     //set the minimum source mass
     //M_MIN = get_M_min_ion(Z);
+
+    if(USE_GENERAL_SOURCES)
+    {
+      sources src;
+      src = defaultSources();
+      M_MIN = src.minMass(Z);
+      printf("At Z = %f, M_MIN = %e MSUN\n", Z, M_MIN);
+    }
 
     // if USE_HALO_FIELD is turned on in ANAL_PARAMS.H, run the halo finder
     if (USE_HALO_FIELD){

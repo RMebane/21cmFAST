@@ -5,6 +5,7 @@
 #include <stdlib.h>
 
 #include "../Parameter_files/INIT_PARAMS.H"
+#include "../Parameter_files/SOURCES.H"
 
 /*
   Program DRIVE_ZSCROLL_NOTS.C scrolls through the redshifts defined below,
@@ -51,13 +52,20 @@ int main(int argc, char ** argv){
 
   fprintf(stderr, "Calling init to set up the initial conditions\n");
   fprintf(LOG, "Calling init to set up the initial conditions\n");
-  system("./init"); // you only need this call once per realization
+  //system("./init"); // you only need this call once per realization
 
   Z = ZSTART;
   while (Z > (ZEND-0.0001)){
     fprintf(stderr, "*************************************\n");
 
     M_MIN = get_M_min_ion(Z);
+    if(USE_GENERAL_SOURCES)
+    {
+      sources src;
+      src = defaultSources();
+      M_MIN = src.minMass(Z);
+      printf("At Z = %f, M_MIN = %e MSUN\n", Z, M_MIN);
+    }
 
     // if USE_HALO_FIELD is turned on in ANAL_PARAMS.H, run the halo finder
     if (USE_HALO_FIELD){
