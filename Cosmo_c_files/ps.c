@@ -45,12 +45,12 @@ static gsl_spline *erfc_spline;
 #define NMass 2000
 
 /* New in v1.4 - part 1 of 4 start */
-#define NSFR_high 200
-#define NSFR_low 250
+#define NSFR_high 20 //200
+#define NSFR_low 20 //250
 #define NGL_SFR 100 
 /* Number of interpolation points for the interpolation table for z'' 
                 This is the same parameter in 21CMMC */
-#define zpp_interp_points (int) (300) 
+#define zpp_interp_points (int) (30) //300
 /* New in v1.4 - part 1 of 4 end */
 
 static gsl_interp_accel *Fcoll_spline_acc;
@@ -1305,7 +1305,7 @@ double FgtrM_st_SFR(double z, double MassTurnover, double Alpha_star, double Alp
 
 }
 
-// Same as above, but with fx and fesc = 1 for Pop III
+// Same as above, but with fx and fesc = 1 and no Nion
 double dFdlnM_st_SFR_III(double lnM, void *params){
     struct parameters_gsl_SFR_int_ vals = *(struct parameters_gsl_SFR_int_ *)params;
 
@@ -1339,7 +1339,7 @@ double dFdlnM_st_SFR_III(double lnM, void *params){
   {
     sources src;
     src = defaultSources();
-    return dNdM_st(z,M) * M * M * src.fstar(z, M) * src.Nion(z, M) * src.fx(z, M);
+    return dNdM_st(z,M) * M * M * src.fstar(z, M) * src.fx(z, M);
   }
     return dNdM_st(z,M) * M * M * exp(-MassTurnover/M) * Fstar * Fesc;
 }
@@ -1836,7 +1836,7 @@ float GaussLegendreQuad_FcollSFR(int n, float z, float M2, float delta1, float d
 
 }
 
-// same as above, but with fx and fesc = 1
+// same as above, but with fx and fesc = 1 and no Nion
 float FgtrConditionallnM_GL_SFR_III(float lnM, struct parameters_gsl_SFR_con_int_ parameters_gsl_SFR_con){
     float M = exp(lnM);
     float z = parameters_gsl_SFR_con.z_obs;
@@ -1871,7 +1871,7 @@ float FgtrConditionallnM_GL_SFR_III(float lnM, struct parameters_gsl_SFR_con_int
   {
     sources src;
     src = defaultSources();
-    return M * dNdM_conditional_second(z,log(M),M2,del1,del2)/sqrt(2.*PI) * src.fstar(z, M) * src.Nion(z, M) * src.fx(z, M);
+    return M * dNdM_conditional_second(z,log(M),M2,del1,del2)/sqrt(2.*PI) * src.fstar(z, M) * src.fx(z, M);
   }
 
     return M*exp(-MassTurnover/M)*Fstar*Fesc*dNdM_conditional_second(z,log(M),M2,del1,del2)/sqrt(2.*PI);
@@ -2001,7 +2001,7 @@ double FgtrConditionalM_SFR(double z, double M1, double M2, double delta1, doubl
 
 }
 
-// same as above, but with fx and fesc = 1
+// same as above, but with fx and fesc = 1 and no Nion
 double dFgtrConditionallnM_SFR_III(double lnM, void *params) {
     struct parameters_gsl_SFR_con_int_ vals = *(struct parameters_gsl_SFR_con_int_ *)params;
     double M = exp(lnM); // linear scale
@@ -2037,7 +2037,7 @@ double dFgtrConditionallnM_SFR_III(double lnM, void *params) {
   {
     sources src;
     src = defaultSources();
-    return M * dNdM_conditional_second(z,log(M),M2,del1,del2)/sqrt(2.*PI) * src.fstar(z, M) * src.Nion(z, M) * src.fx(z, M);
+    return M * dNdM_conditional_second(z,log(M),M2,del1,del2)/sqrt(2.*PI) * src.fstar(z, M) * src.fx(z, M);
   }
 
     return M*exp(-MassTurnover/M)*Fstar*Fesc*dNdM_conditional_second(z,log(M),M2,del1,del2)/sqrt(2.*PI);
@@ -2224,7 +2224,7 @@ void initialise_Xray_Fcollz_SFR_Conditional_table(int Nsteps_zp, int Nfilter, fl
     Mmin = MassTurnover/50; 
     if(USE_GENERAL_SOURCES)
     {
-      Mmin = src.minMass(z[0]);
+      Mmin = 1e5;
     }
 	Mmax = RtoM(R[Nfilter-1]);
 	Mlim_Fstar = Mass_limit_bisection(Mmin, Mmax, Alpha_star, Fstar10);

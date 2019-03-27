@@ -853,8 +853,16 @@ if(USE_GENERAL_SOURCES) M_MIN = src.minMass(REDSHIFT);
     }    
     // Finally, convert to the correct units. NU_over_EV*hplank as only want to divide by eV -> erg (owing to the definition of Luminosity)
     Luminosity_conversion_factor *= (3.1556226e7)/(hplank);
+    if(USE_GENERAL_SOURCES) 
+    {
+      const_zp_prefactor = ( X_LUMINOSITY * Luminosity_conversion_factor ) / NU_X_THRESH * C 
+       * OMb * RHOcrit * pow(CMperMPC, -3) * pow(1+zp, X_RAY_SPEC_INDEX+3);
+    }
+    else
+    {
     const_zp_prefactor = ( X_LUMINOSITY * Luminosity_conversion_factor ) / NU_X_THRESH * C 
 			 * F_STAR10 * OMb * RHOcrit * pow(CMperMPC, -3) * pow(1+zp, X_RAY_SPEC_INDEX+3);
+    }
 
 
 

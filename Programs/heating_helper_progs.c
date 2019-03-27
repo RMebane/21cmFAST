@@ -459,7 +459,8 @@ void evolveInt(float zp, float curr_delNL0[], double freq_int_heat[],
   dxion_source_dt *= const_zp_prefactor;
   if (COMPUTE_Ts){
     dxlya_dt *= const_zp_prefactor*n_b;
-    dstarlya_dt *= F_STAR10 * C * N_b0 / FOURPI;
+    if(USE_GENERAL_SOURCES) dstarlya_dt *= C * N_b0 / FOURPI;
+    else dstarlya_dt *= F_STAR10 * C * N_b0 / FOURPI;
 
     /*
     if ((dxlya_dt < 0) || (dstarlya_dt<0)){

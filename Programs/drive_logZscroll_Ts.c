@@ -100,7 +100,7 @@ int main(int argc, char ** argv){
       sources src;
       src = defaultSources();
       M_MIN = src.minMass(Z);
-      printf("At Z = %f, M_MIN = %e MSUN\n", Z, M_MIN);
+      printf("At z = %f, M_MIN = %e MSUN\n", Z, M_MIN);
     }
 
     // if USE_HALO_FIELD is turned on in ANAL_PARAMS.H, run the halo finder
