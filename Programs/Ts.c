@@ -121,7 +121,6 @@ double freq_int_heat[NUM_FILTER_STEPS_FOR_Ts], freq_int_ion[NUM_FILTER_STEPS_FOR
  double Luminosity_conversion_factor;
  int RESTART = 0;
 double Tback;
-printf("0\n");
  /**********  BEGIN INITIALIZATION   **************************************/
  //New in v1.4
  if (SHARP_CUTOFF) {
@@ -185,7 +184,6 @@ printf("0\n");
    HALO_MASS_DEPENDENT_IONIZING_EFFICIENCY = 1;
    ION_EFF_FACTOR = N_GAMMA_UV * F_STAR10 * F_ESC10;
  }
-printf("10\n");
  // Initialize source structure - RM
  sources src;
  src = defaultSources();
@@ -207,7 +205,6 @@ init_ps();
  }*/
 if(USE_GENERAL_SOURCES) M_MIN = src.minMass(REDSHIFT);
 
- printf("1\n");
 
  system("mkdir ../Log_files");
  system("mkdir ../Output_files");
