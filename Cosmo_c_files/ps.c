@@ -1632,7 +1632,7 @@ double massFuncInt(double lnM, void *params)
     double z, M;
     z = *(double *)params;
     M = exp(lnM);
-    return dNdM_st(z, M) * M;
+    return dNdM_st(z, M);
 }
 
 
