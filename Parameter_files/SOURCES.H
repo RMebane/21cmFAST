@@ -160,7 +160,7 @@ double Mmin_jordan(double z)
 
 double fstar_21cmfid(double z, double M)
 {
-    return 0.05 * pow(M / 1.0e10, 0.5);
+    return 0.05 * pow(M / 1.0e10, 0.5) * exp(-5e8 / M);
 }
 
 double fesc_21cmfid(double z, double M)
@@ -225,17 +225,26 @@ double fstarSteveMom(double z, double M)
     return 1.0 / (1.0 + etaSteveMom(z, M));
 }
 
+double fstarFid(double z, double M)
+{
+    if (M > minMassATC(z)) return fstarSteveEnergy(z, M);
+    return 0.005;
+}
+
+double minMass_21cmfid(double z) {return 5e8 / 50.0;}
+
 // source functions for comparing with sharp cutoff model
 double minMassCutoff(double z) {return 5e8;}
 double NionCutoff(double z, double M) {return 5000;}
 double fescCutoff(double z, double M) {return 0.1;}
 double fstarCutoff(double z, double M) {return 0.05;}
+double fxCutoff(double z, double M) {return 1.0;}
 
 // set the sources here
 sources defaultSources()
 {
     sources s;
-    s = setSources(fescDef, NionDef, fstarSteveEnergy, fxDef, minMassDef);
+    s = setSources(fesc_21cmfid, NionCutoff, fstar_21cmfid, fxCutoff, minMass_21cmfid);
     return s;
 }
 
