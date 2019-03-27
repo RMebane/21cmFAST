@@ -1371,7 +1371,7 @@ double FgtrM_st_SFR_III(double z, double MassTurnover, double Alpha_star, double
       M_Min = s.minMass(z);
     }
 
-    F.function = &dFdlnM_st_SFR;
+    F.function = &dFdlnM_st_SFR_III;
     F.params = &parameters_gsl_SFR;
     lower_limit = log(M_Min);
     upper_limit = log(FMAX(1e16, M_Min*100));
@@ -1906,7 +1906,7 @@ float GaussLegendreQuad_FcollSFR_III(int n, float z, float M2, float delta1, flo
         for(i=1; i<(n+1); i++){
             x = xi_SFR[i];
             x = xi_SFR[i];
-            integrand += wi_SFR[i]*FgtrConditionallnM_GL_SFR(x,parameters_gsl_SFR_con);
+            integrand += wi_SFR[i]*FgtrConditionallnM_GL_SFR_III(x,parameters_gsl_SFR_con);
         }
         return integrand;
     }
