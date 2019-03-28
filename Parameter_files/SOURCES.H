@@ -14,11 +14,13 @@
 
 // more general, allows for halos with multiple populations
 typedef struct{
-    double (*fesc)(double, double);
-    double (*Nion)(double, double);
-    double (*fstar)(double, double);
-    double (*fx)(double, double);
-    double (*minMass)(double);
+    double (*fesc)(double, double); //escape fraction as a function of halo mass and redshift
+    double (*Nion)(double, double); //Nion, generally just set to 4e4 for Pop III, 5e3 for Pop II, and weighted average if a halo has both
+    double (*fstar)(double, double); //star formation efficiency, defined as fraction of a halo's gas in stars. combine both Pop II and Pop III here, differences set in Nion and fPopIII
+                                     //NOTE: fstar here is CUMULATIVE, which is very important for Pop III... make sure to add up all the stellar mass that has been in the halo, not that is there currently
+    double (*fx)(double, double); //boost to xray emissivity, fiducially 1 for Pop II and 100 for Pop III in Yuxiang's 21cmFAST w/ minihalos
+    double (*minMass)(double); //minimum halo mass for star formation (both Pop II and Pop III)
+    double (*fPopIII)(double, double); //mass fraction of Pop III stars in halo of mass M and redshift z. If no mixed populations, just set to 0 or 1. Needed for spectral emissivity calculation
 } sources;
 
 // atomic cooling threshold
@@ -158,6 +160,8 @@ double Mmin_jordan(double z)
     
 }
 
+// Weighted by the exponential cutoff
+// Check to make sure fstar isn't above one BEFORE applying cutoff
 double fstar_21cmfid(double z, double M)
 {
     double res;
