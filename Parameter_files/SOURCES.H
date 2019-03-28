@@ -160,12 +160,18 @@ double Mmin_jordan(double z)
 
 double fstar_21cmfid(double z, double M)
 {
-    return 0.05 * pow(M / 1.0e10, 0.5) * exp(-5e8 / M);
+    double res;
+    res = 0.05 * pow(M / 1.0e10, 0.5);
+    if(res > 1.0) return 1.0 * exp(-5e8 / M);
+    return res * exp(-5e8 / M);
 }
 
 double fesc_21cmfid(double z, double M)
 {
-    return 0.1 * pow(M / 1.0e10, -0.5);
+    double res;
+    res = 0.1 * pow(M / 1.0e10, -0.5);
+    if(res > 1.0) return 1.0;
+    return res;
 }
 
 double fxDef(double z, double M)
