@@ -45,12 +45,12 @@ static gsl_spline *erfc_spline;
 #define NMass 2000
 
 /* New in v1.4 - part 1 of 4 start */
-#define NSFR_high 20 //200
-#define NSFR_low 20 //250
+#define NSFR_high 200 //for quicker run, set to 20
+#define NSFR_low 250 //for quicker run, set to 20
 #define NGL_SFR 100 
 /* Number of interpolation points for the interpolation table for z'' 
                 This is the same parameter in 21CMMC */
-#define zpp_interp_points (int) (30) //300
+#define zpp_interp_points (int) (300) //for quicker run, set to 30
 /* New in v1.4 - part 1 of 4 end */
 
 static gsl_interp_accel *Fcoll_spline_acc;
@@ -1339,7 +1339,7 @@ double dFdlnM_st_SFR_III(double lnM, void *params){
   {
     sources src;
     src = defaultSources();
-    return dNdM_st(z,M) * M * M * src.fstar(z, M) * src.fx(z, M);
+    return dNdM_st(z,M) * M * M * src.fstar(z, M) * src.fx(z, M); // add spectral emissivity here spectral_emissivity;
   }
     return dNdM_st(z,M) * M * M * exp(-MassTurnover/M) * Fstar * Fesc;
 }
