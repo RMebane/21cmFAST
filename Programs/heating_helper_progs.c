@@ -40,7 +40,7 @@ int init_heat();
 void destruct_heat(); 
 
  /* returns the spectral emissity */
-double spectral_emissivity(double nu_norm, int flag, int stellar_pop);
+double spectral_emissivity(double nu_norm, int flag, int stellar_pop, double fPopIII);
 
 /* Ionization fraction from RECFAST. */
 double xion_RECFAST(float z, int flag);
@@ -117,7 +117,7 @@ int init_heat()
     return -4;
   if (xion_RECFAST(100, 1) < 0)
     return -5;
-  if (spectral_emissivity(0,1,2) < 0)
+  if (spectral_emissivity(0,1,2,0) < 0)
     return -6;
 
   initialize_interp_arrays();
@@ -133,7 +133,7 @@ void destruct_heat()
   kappa_10_pH(1.0,2);
   T_RECFAST(100.0,2);
   xion_RECFAST(100.0,2);
-  spectral_emissivity(0.0, 2, 2);
+  spectral_emissivity(0.0, 2, 2,0);
 }
 
 
@@ -233,7 +233,7 @@ double frecycle(int n)
 
 /* Reads in and constructs table of the piecewise power-law fits to Pop 2 and 
  * Pop 3 stellar spectra, from Barkana */
-double spectral_emissivity(double nu_norm, int flag, int stellar_pop)
+double spectral_emissivity(double nu_norm, int flag, int stellar_pop, double fPopIII)
 {
   static int n[NSPEC_MAX];
   static float nu_n[NSPEC_MAX], alpha_S_2[NSPEC_MAX];
@@ -285,6 +285,9 @@ double spectral_emissivity(double nu_norm, int flag, int stellar_pop)
     }
   }
 
+  // return average of Pop II + Pop III
+  if(USE_GENERAL_SOURCES) return fPopIII * N0_3[i]*pow(nu_norm,alpha_S_3[i])/Ly_alpha_HZ + (1 - fPopIII) * N0_2[i]*pow(nu_norm,alpha_S_2[i])/Ly_alpha_HZ;
+
   i= NSPEC_MAX-1;
   if (stellar_pop == 2)
     return  N0_2[i]*pow(nu_norm,alpha_S_2[i])/Ly_alpha_HZ;
@@ -295,6 +298,7 @@ double spectral_emissivity(double nu_norm, int flag, int stellar_pop)
 
 // returns average value of spectral emissivity for given source population defined in SOURCES.H
 // params struct for integration
+/*
 struct parameters_gsl_emis_int_{
     sources s;
     double z;
@@ -362,7 +366,7 @@ double spec_emis_avg(double z, sources s, double nu_norm)
     gsl_integration_workspace_free(w);
 
     return resultNum / resultMf;
-}
+}*/
 
 /********************************************************************
  ************************** IGM Evolution ***************************

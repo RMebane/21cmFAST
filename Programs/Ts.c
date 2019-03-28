@@ -203,7 +203,7 @@ init_ps();
          || src.minMassIII(REDSHIFT) < 0) M_MIN = src.minMass(REDSHIFT);
      else M_MIN = src.minMassIII(REDSHIFT);
  }*/
-if(USE_GENERAL_SOURCES) M_MIN = src.minMass(REDSHIFT);
+if(USE_GENERAL_SOURCES) M_MIN = src.minMass(REDSHIFT) * 50.0; //Multipied by 50 just to test mean PS collapse fraction with fiducial 21cmFAST... this variable doesn't actually matter
 
 
  system("mkdir ../Log_files");
@@ -784,8 +784,10 @@ if(USE_GENERAL_SOURCES) M_MIN = src.minMass(REDSHIFT);
 
       if (DEBUG_ON){
 	    if (HALO_MASS_DEPENDENT_IONIZING_EFFICIENCY) {
+        printf("zpp = %le M_MIN = %le fcoll_R = %le\n", zpp, M_MIN, fcoll_R);
       printf("ST/PS=%g, mean_ST=%g, mean_ps=%g\n, ratios of mean=%g\n", ST_over_PS[R_ct], 
 		 Splined_Fcollzpp_X_mean,
+        
 	     FgtrM(zpp, M_MIN),
 	     Splined_Fcollzpp_X_mean/FgtrM(zpp, M_MIN)
 	     );
@@ -823,8 +825,9 @@ if(USE_GENERAL_SOURCES) M_MIN = src.minMass(REDSHIFT);
 	  continue;
 
 	nuprime = nu_n(n_ct)*(1+zpp)/(1.0+zp);
-  if(USE_GENERAL_SOURCES) sum_lyn[R_ct] += frecycle(n_ct) * spec_emis_avg(zpp, src, nuprime);
-	else sum_lyn[R_ct] += frecycle(n_ct) * spectral_emissivity(nuprime, 0, Pop);
+  // remove spectral_emissivity calculation, as it is added into one of the fcoll integrals if USE_GENERAL_SOURCES
+  //if(USE_GENERAL_SOURCES) sum_lyn[R_ct] += frecycle(n_ct);
+	/*else*/ sum_lyn[R_ct] += frecycle(n_ct) * spectral_emissivity(nuprime, 0, Pop, src.fPopIII(zpp));
       }
     } // end loop over R_ct filter steps
     time(&curr_time);

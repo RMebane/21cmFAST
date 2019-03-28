@@ -1339,7 +1339,18 @@ double dFdlnM_st_SFR_III(double lnM, void *params){
   {
     sources src;
     src = defaultSources();
-    return dNdM_st(z,M) * M * M * src.fstar(z, M) * src.fx(z, M); // add spectral emissivity here spectral_emissivity;
+    /*
+    int n_ct_fcoll
+    for (n_ct_fcoll=NSPEC_MAX; n_ct>=2; n_ct--){
+    if (zpp > zmax(zp, n_ct))
+    continue;
+
+  nuprime = nu_n(n_ct)*(1+zpp)/(1.0+zp);
+  // remove spectral_emissivity calculation, as it is added into one of the fcoll integrals if USE_GENERAL_SOURCES
+  if(USE_GENERAL_SOURCES) sum_lyn[R_ct] += frecycle(n_ct);
+  else sum_lyn[R_ct] += frecycle(n_ct) * spectral_emissivity(nuprime, 0, Pop, 0);
+      }*/
+    return dNdM_st(z,M) * M * M * src.fstar(z, M) * src.fx(z, M);
   }
     return dNdM_st(z,M) * M * M * exp(-MassTurnover/M) * Fstar * Fesc;
 }
@@ -2224,7 +2235,7 @@ void initialise_Xray_Fcollz_SFR_Conditional_table(int Nsteps_zp, int Nfilter, fl
     Mmin = MassTurnover/50; 
     if(USE_GENERAL_SOURCES)
     {
-      Mmin = 1e5;
+      Mmin = 1e5; // just set this to something really low to make sure we get the full range of possible masses in initialiseSplinedSigmaM
     }
 	Mmax = RtoM(R[Nfilter-1]);
 	Mlim_Fstar = Mass_limit_bisection(Mmin, Mmax, Alpha_star, Fstar10);

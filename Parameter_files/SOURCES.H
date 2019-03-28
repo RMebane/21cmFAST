@@ -20,7 +20,7 @@ typedef struct{
                                      //NOTE: fstar here is CUMULATIVE, which is very important for Pop III... make sure to add up all the stellar mass that has been in the halo, not that is there currently
     double (*fx)(double, double); //boost to xray emissivity, fiducially 1 for Pop II and 100 for Pop III in Yuxiang's 21cmFAST w/ minihalos
     double (*minMass)(double); //minimum halo mass for star formation (both Pop II and Pop III)
-    double (*fPopIII)(double, double); //mass fraction of Pop III stars in halo of mass M and redshift z. If no mixed populations, just set to 0 or 1. Needed for spectral emissivity calculation
+    double (*fPopIII)(double); //mass fraction of Pop III halos at redshift z. If no mixed populations, just set to 0 or 1. Needed for spectral emissivity calculation
 } sources;
 
 // atomic cooling threshold
@@ -37,7 +37,8 @@ sources setSources(double (*fesc)(double, double),
                    double (*Nion)(double, double),
                    double (*fstar)(double, double),
                    double (*fx)(double, double),
-                   double (*minMass)(double))
+                   double (*minMass)(double),
+                   double (*fPopIII)(double))
 {
     sources s;
     s.fesc = fesc;
@@ -45,6 +46,7 @@ sources setSources(double (*fesc)(double, double),
     s.fstar = fstar;
     s.minMass = minMass;
     s.fx = fx;
+    s.fPopIII = fPopIII;
     return s;
 }
 
@@ -241,6 +243,16 @@ double fstarFid(double z, double M)
     return 0.005;
 }
 
+double noPopIII(double z)
+{
+    return 0;
+}
+
+double allPopIII(double z)
+{
+    return 1;
+}
+
 double minMass_21cmfid(double z) {return 5e8 / 50.0;}
 
 // source functions for comparing with sharp cutoff model
@@ -254,7 +266,7 @@ double fxCutoff(double z, double M) {return 1.0;}
 sources defaultSources()
 {
     sources s;
-    s = setSources(fesc_21cmfid, NionCutoff, fstar_21cmfid, fxCutoff, minMass_21cmfid);
+    s = setSources(fesc_21cmfid, NionCutoff, fstar_21cmfid, fxCutoff, minMass_21cmfid, noPopIII);
     return s;
 }
 
