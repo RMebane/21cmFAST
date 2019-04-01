@@ -29,9 +29,12 @@ void init_21cmMC_arrays() {
 
     for (i=0; i < NUM_FILTER_STEPS_FOR_Ts; i++){
       FcollLow_zpp_spline_acc[i] = gsl_interp_accel_alloc ();
+      FcollLowLya_zpp_spline_acc[i] = gsl_interp_accel_alloc ();
       FcollLow_zpp_spline[i] = gsl_spline_alloc (gsl_interp_cspline, NSFR_low);
+      FcollLowLya_zpp_spline[i] = gsl_spline_alloc (gsl_interp_cspline, NSFR_low);
 
       second_derivs_Fcoll_zpp[i] = calloc(NSFR_high,sizeof(float));
+      second_derivs_FcollLya_zpp[i] = calloc(NSFR_high,sizeof(float));
     }
 
     xi_SFR = calloc((NGL_SFR+1),sizeof(float));
@@ -42,15 +45,19 @@ void init_21cmMC_arrays() {
 	redshift_interp_table = calloc(NUM_FILTER_STEPS_FOR_Ts*Nsteps_zp, sizeof(float)); // New
 
 	log10_overdense_low_table = calloc(NSFR_low,sizeof(double));
-	log10_Fcollz_SFR_low_table = (double **)calloc(NUM_FILTER_STEPS_FOR_Ts*Nsteps_zp,sizeof(double *)); //New
+	log10_Fcollz_SFR_low_table = (double **)calloc(NUM_FILTER_STEPS_FOR_Ts*Nsteps_zp,sizeof(double *));
+  log10_FcollzLya_SFR_low_table = (double **)calloc(NUM_FILTER_STEPS_FOR_Ts*Nsteps_zp,sizeof(double *)); //New
 	for(i=0;i<NUM_FILTER_STEPS_FOR_Ts*Nsteps_zp;i++){  // New
 			log10_Fcollz_SFR_low_table[i] = (double *)calloc(NSFR_low,sizeof(double));
+      log10_FcollzLya_SFR_low_table[i] = (double *)calloc(NSFR_low,sizeof(double));
 	}
 
 	Overdense_high_table = calloc(NSFR_high,sizeof(float));
-	Fcollz_SFR_high_table = (float **)calloc(NUM_FILTER_STEPS_FOR_Ts*Nsteps_zp,sizeof(float *)); //New
+	Fcollz_SFR_high_table = (float **)calloc(NUM_FILTER_STEPS_FOR_Ts*Nsteps_zp,sizeof(float *)); 
+  FcollzLya_SFR_high_table = (float **)calloc(NUM_FILTER_STEPS_FOR_Ts*Nsteps_zp,sizeof(float *)); //New
 	for(i=0;i<NUM_FILTER_STEPS_FOR_Ts*Nsteps_zp;i++){  // New
 			Fcollz_SFR_high_table[i] = (float *)calloc(NSFR_high,sizeof(float));
+      FcollzLya_SFR_high_table[i] = (float *)calloc(NSFR_high,sizeof(float));
 	}
 }
 
@@ -66,22 +73,29 @@ void destroy_21cmMC_arrays() {
 
 	for(i=0;i<NUM_FILTER_STEPS_FOR_Ts*Nsteps_zp;i++) {
 		free(log10_Fcollz_SFR_low_table[i]);
+    free(log10_FcollzLya_SFR_low_table[i]);
 	}
 	free(log10_Fcollz_SFR_low_table);
+  free(log10_FcollzLya_SFR_low_table);
 
 	free(log10_overdense_low_table);
 
 	for(i=0;i<NUM_FILTER_STEPS_FOR_Ts*Nsteps_zp;i++) {
 		free(Fcollz_SFR_high_table[i]);
+    free(FcollzLya_SFR_high_table[i]);
 	}
 	free(Fcollz_SFR_high_table);
+  free(FcollzLya_SFR_high_table);
 
 	free(Overdense_high_table);
 	
     for (i=0; i < NUM_FILTER_STEPS_FOR_Ts; i++){
       gsl_spline_free (FcollLow_zpp_spline[i]);
+      gsl_spline_free (FcollLowLya_zpp_spline[i]);
       gsl_interp_accel_free (FcollLow_zpp_spline_acc[i]);
+      gsl_interp_accel_free (FcollLowLya_zpp_spline_acc[i]);
       free(second_derivs_Fcoll_zpp[i]);
+      free(second_derivs_FcollLya_zpp[i]);
     }
 }
 
@@ -109,13 +123,13 @@ double freq_int_heat_tbl[x_int_NXHII][NUM_FILTER_STEPS_FOR_Ts], freq_int_ion_tbl
   int goodSteps,badSteps;
   int m_xHII_low, m_xHII_high, n_ct, zp_ct;
 double freq_int_heat[NUM_FILTER_STEPS_FOR_Ts], freq_int_ion[NUM_FILTER_STEPS_FOR_Ts], freq_int_lya[NUM_FILTER_STEPS_FOR_Ts];
- double nuprime, fcoll_R, Ts_ave;
+ double nuprime, fcoll_R, fcoll_R_Lya, Ts_ave;
  float *delNL0[NUM_FILTER_STEPS_FOR_Ts], xHII_call, curr_xalpha;
  float z, Jalpha, TK, TS, xe, deltax;
  time_t start_time, curr_time;
  double J_alpha_threads[NUMCORES], xalpha_threads[NUMCORES], Xheat_threads[NUMCORES],
    Xion_threads[NUMCORES], lower_int_limit;
- float Splined_Fcollzp_mean, Splined_Fcollzpp_X_mean,ION_EFF_FACTOR,fcoll; // New in v1.4
+ float Splined_Fcollzp_mean, Splined_Fcollzpp_X_mean,ION_EFF_FACTOR,fcoll, fcollLya,Splined_Fcollzpp_Lya_mean; // New in v1.4
  float zp_table; //New in v1.4
  int counter,arr_num; // New in v1.4
  double Luminosity_conversion_factor;
@@ -621,6 +635,9 @@ if(USE_GENERAL_SOURCES) M_MIN = src.minMass(REDSHIFT) * 50.0; //Multipied by 50 
 	   compute 'FgtrM_st_SFR' corresponding to an array of redshift, but assume f_{esc10} = 1 and \alpha_{esc} = 0. */
     initialise_Xray_FgtrM_st_SFR_spline(zpp_interp_points,determine_zpp_min, determine_zpp_max, M_TURN, ALPHA_STAR, F_STAR10);
     printf("\n Completed initialise Fcoll_spline for X-ray Time = %06.2f min \n",(double)clock()/CLOCKS_PER_SEC/60.0);
+
+    initialise_Lya_FgtrM_st_SFR_spline(zpp_interp_points,determine_zpp_min, determine_zpp_max, M_TURN, ALPHA_STAR, F_STAR10);
+    printf("\n Completed initialise Fcoll_spline for Lya Time = %06.2f min \n",(double)clock()/CLOCKS_PER_SEC/60.0);
 	
 	// initialise redshift table corresponding to all the redshifts to initialise interpolation for the conditional mass function.
     zp_table = zp;
@@ -650,6 +667,9 @@ if(USE_GENERAL_SOURCES) M_MIN = src.minMass(REDSHIFT) * 50.0; //Multipied by 50 
 	   Compute the conditional mass function, but assume f_{esc10} = 1 and \alpha_{esc} = 0. */
 	initialise_Xray_Fcollz_SFR_Conditional_table(Nsteps_zp,NUM_FILTER_STEPS_FOR_Ts,redshift_interp_table,R_values, M_TURN, ALPHA_STAR, F_STAR10);
 	printf("\n Generated the table of conditional mass function = %06.2f min \n",(double)clock()/CLOCKS_PER_SEC/60.0);
+
+  initialise_Lya_Fcollz_SFR_Conditional_table(Nsteps_zp,NUM_FILTER_STEPS_FOR_Ts,redshift_interp_table,R_values, M_TURN, ALPHA_STAR, F_STAR10);
+  printf("\n Generated the table of conditional mass function (Lya) = %06.2f min \n",(double)clock()/CLOCKS_PER_SEC/60.0);
 	
   }
   
@@ -674,7 +694,9 @@ if(USE_GENERAL_SOURCES) M_MIN = src.minMass(REDSHIFT) * 50.0; //Multipied by 50 
 	  arr_num = NUM_FILTER_STEPS_FOR_Ts*counter; // New
 	  for (i=0; i<NUM_FILTER_STEPS_FOR_Ts; i++) {
         gsl_spline_init(FcollLow_zpp_spline[i], log10_overdense_low_table, log10_Fcollz_SFR_low_table[arr_num + i], NSFR_low);
+        gsl_spline_init(FcollLowLya_zpp_spline[i], log10_overdense_low_table, log10_FcollzLya_SFR_low_table[arr_num + i], NSFR_low);
         spline(Overdense_high_table-1,Fcollz_SFR_high_table[arr_num + i]-1,NSFR_high,0,0,second_derivs_Fcoll_zpp[i]-1); 
+        spline(Overdense_high_table-1,FcollzLya_SFR_high_table[arr_num + i]-1,NSFR_high,0,0,second_derivs_FcollLya_zpp[i]-1); 
 	  }
 	}
 
@@ -733,6 +755,7 @@ if(USE_GENERAL_SOURCES) M_MIN = src.minMass(REDSHIFT) * 50.0; //Multipied by 50 
       // let's now normalize the total collapse fraction so that the mean is the
       // Sheth-Torman collapse fraction
       fcoll_R = 0;
+      fcoll_R_Lya;
       sample_ct=0;
       for (box_ct=0; box_ct<HII_TOT_NUM_PIXELS; box_ct+=(HII_TOT_NUM_PIXELS/1e5+1)){
 	sample_ct++;
@@ -744,9 +767,11 @@ if(USE_GENERAL_SOURCES) M_MIN = src.minMass(REDSHIFT) * 50.0; //Multipied by 50 
       if (delNL0[R_ct][box_ct]*growth_zpp < 1.5){
         if (delNL0[R_ct][box_ct]*growth_zpp < -1.) {
 		  fcoll = 0;
+      fcollLya = 0;
         }    
         else {
           fcoll = gsl_spline_eval(FcollLow_zpp_spline[R_ct], log10(delNL0[R_ct][box_ct]*growth_zpp+1.), FcollLow_zpp_spline_acc[R_ct]);
+          fcollLya = gsl_spline_eval(FcollLowLya_zpp_spline[R_ct], log10(delNL0[R_ct][box_ct]*growth_zpp+1.), FcollLowLya_zpp_spline_acc[R_ct]);
           fcoll = pow(10., fcoll);
         }    
       }    
@@ -757,14 +782,18 @@ if(USE_GENERAL_SOURCES) M_MIN = src.minMass(REDSHIFT) * 50.0; //Multipied by 50 
           // Additionally, the fraction of points in this regime relative to the entire simulation volume is extremely small.
 		  //New
           splint(Overdense_high_table-1,Fcollz_SFR_high_table[arr_num + R_ct]-1,second_derivs_Fcoll_zpp[R_ct]-1,NSFR_high,delNL0[R_ct][box_ct]*growth_zpp,&(fcoll));
+          splint(Overdense_high_table-1,FcollzLya_SFR_high_table[arr_num + R_ct]-1,second_derivs_FcollLya_zpp[R_ct]-1,NSFR_high,delNL0[R_ct][box_ct]*growth_zpp,&(fcollLya));
         }    
         else {
 		  fcoll = 1.;
+      fcollLya = 1.;
         }    
       }    
       Splined_Fcoll = fcoll;
+      Splined_Fcoll_Lya = fcollLya;
       //---------- interpolation for fcoll is done ----------
 	  fcoll_R += Splined_Fcoll;
+    fcoll_R_Lya += Splined_Fcoll_Lya;
 	} 
 	else {
 	  fcoll_R += sigmaparam_FgtrM_bias(zpp, sigma_Tmin[R_ct], 
@@ -776,7 +805,9 @@ if(USE_GENERAL_SOURCES) M_MIN = src.minMass(REDSHIFT) * 50.0; //Multipied by 50 
 
 	  if (HALO_MASS_DEPENDENT_IONIZING_EFFICIENCY) {// New in v1.4
 	    FgtrM_st_SFR_X_z(zpp,&(Splined_Fcollzpp_X_mean));
+      FgtrM_st_SFR_Lya_z(zpp,&(Splined_Fcollzpp_Lya_mean));
 	    ST_over_PS[R_ct] = Splined_Fcollzpp_X_mean / fcoll_R; 
+      ST_over_PS_Lya[R_ct] = Splined_Fcollzpp_Lya_mean / fcoll_R;
 	  }
 	  else {
         ST_over_PS[R_ct] = FgtrM_st(zpp, M_MIN) / fcoll_R;
@@ -874,7 +905,7 @@ if(USE_GENERAL_SOURCES) M_MIN = src.minMass(REDSHIFT) * 50.0; //Multipied by 50 
     for (ct=0; ct<NUMCORES; ct++)
       J_alpha_threads[ct] = xalpha_threads[ct] = Xheat_threads[ct] = Xion_threads[ct] = 0;
     /***************  PARALLELIZED LOOP ******************************************************************/
-#pragma omp parallel shared(COMPUTE_Ts, Tk_box, x_e_box, x_e_ave, delNL0, freq_int_heat_tbl, freq_int_ion_tbl, freq_int_lya_tbl, zp, dzp, Ts, x_int_XHII, x_int_Energy, x_int_fheat, x_int_n_Lya, x_int_nion_HI, x_int_nion_HeI, x_int_nion_HeII, growth_factor_zp, dgrowth_factor_dzp, NO_LIGHT, zpp_edge, sigma_atR, sigma_Tmin, ST_over_PS, sum_lyn, const_zp_prefactor, M_MIN_at_z, M_MIN_at_zp, dt_dzp, J_alpha_threads, xalpha_threads, Xheat_threads, Xion_threads) private(box_ct, ans, xHII_call, R_ct, curr_delNL0, m_xHII_low, m_xHII_high, freq_int_heat, freq_int_ion, freq_int_lya, dansdz, J_alpha_tot, curr_xalpha)
+#pragma omp parallel shared(COMPUTE_Ts, Tk_box, x_e_box, x_e_ave, delNL0, freq_int_heat_tbl, freq_int_ion_tbl, freq_int_lya_tbl, zp, dzp, Ts, x_int_XHII, x_int_Energy, x_int_fheat, x_int_n_Lya, x_int_nion_HI, x_int_nion_HeI, x_int_nion_HeII, growth_factor_zp, dgrowth_factor_dzp, NO_LIGHT, zpp_edge, sigma_atR, sigma_Tmin, ST_over_PS, ST_over_PS_Lya, sum_lyn, const_zp_prefactor, M_MIN_at_z, M_MIN_at_zp, dt_dzp, J_alpha_threads, xalpha_threads, Xheat_threads, Xion_threads) private(box_ct, ans, xHII_call, R_ct, curr_delNL0, m_xHII_low, m_xHII_high, freq_int_heat, freq_int_ion, freq_int_lya, dansdz, J_alpha_tot, curr_xalpha)
     {
 #pragma omp for
       

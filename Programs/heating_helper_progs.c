@@ -12,23 +12,25 @@
 #define KAPPA_10_pH_NPTS (int) 17
 
 /* Define some global variables; yeah i know it isn't "good practice" but doesn't matter */
-double zpp_edge[NUM_FILTER_STEPS_FOR_Ts], sigma_atR[NUM_FILTER_STEPS_FOR_Ts], sigma_Tmin[NUM_FILTER_STEPS_FOR_Ts], ST_over_PS[NUM_FILTER_STEPS_FOR_Ts], sum_lyn[NUM_FILTER_STEPS_FOR_Ts], R_values[NUM_FILTER_STEPS_FOR_Ts];
+double zpp_edge[NUM_FILTER_STEPS_FOR_Ts], sigma_atR[NUM_FILTER_STEPS_FOR_Ts], sigma_Tmin[NUM_FILTER_STEPS_FOR_Ts], ST_over_PS[NUM_FILTER_STEPS_FOR_Ts], ST_over_PS_Lya[NUM_FILTER_STEPS_FOR_Ts], sum_lyn[NUM_FILTER_STEPS_FOR_Ts], R_values[NUM_FILTER_STEPS_FOR_Ts];
 unsigned long long box_ct;
 double const_zp_prefactor, dt_dzp, x_e_ave;
 double growth_factor_zp, dgrowth_factor_dzp, PS_ION_EFF;
 int NO_LIGHT;
 float M_MIN_at_z, M_MIN_at_zp;
 int HALO_MASS_DEPENDENT_IONIZING_EFFICIENCY; // New in v1.4
-float F_STAR10,F_ESC10,ALPHA_STAR,ALPHA_ESC,M_TURN,T_AST,Mlim_Fstar,Mlim_Fesc,M_MIN,Splined_Fcoll;//,Splined_Fcollz_mean; // New in v1.4
+float F_STAR10,F_ESC10,ALPHA_STAR,ALPHA_ESC,M_TURN,T_AST,Mlim_Fstar,Mlim_Fesc,M_MIN,Splined_Fcoll, Splined_Fcoll_Lya;//,Splined_Fcollz_mean; // New in v1.4
 double X_LUMINOSITY;
 float growth_zpp; // New in v1.4
 static float determine_zpp_max, determine_zpp_min,zpp_bin_width; // new in v1.4
-float *second_derivs_Fcoll_zpp[NUM_FILTER_STEPS_FOR_Ts]; // New
+float *second_derivs_Fcoll_zpp[NUM_FILTER_STEPS_FOR_Ts], *second_derivs_FcollLya_zpp[NUM_FILTER_STEPS_FOR_Ts]; // New
 float *redshift_interp_table;
 int Nsteps_zp; //New in v1.4 
 float *zpp_interp_table; //New in v1.4
 gsl_interp_accel *FcollLow_zpp_spline_acc[NUM_FILTER_STEPS_FOR_Ts];
 gsl_spline *FcollLow_zpp_spline[NUM_FILTER_STEPS_FOR_Ts];
+gsl_interp_accel *FcollLowLya_zpp_spline_acc[NUM_FILTER_STEPS_FOR_Ts];
+gsl_spline *FcollLowLya_zpp_spline[NUM_FILTER_STEPS_FOR_Ts];
 
 int i; //TEST
 FILE *LOG;
@@ -378,10 +380,10 @@ void evolveInt(float zp, float curr_delNL0[], double freq_int_heat[],
   double  dfdzp, dadia_dzp, dcomp_dzp, dxheat_dt, ddz, dxion_source_dt, dxion_sink_dt;
   double zpp, dzpp, nu_temp;
   int zpp_ct,ithread;
-  double T, x_e, dTdzp, dx_edzp, dfcoll, zpp_integrand;
+  double T, x_e, dTdzp, dx_edzp, dfcoll, dfcollLya, zpp_integrand;
   double dxe_dzp, n_b, dspec_dzp, dxheat_dzp, dxlya_dt, dstarlya_dt;
   // New in v1.4
-  float growth_zpp,fcoll;
+  float growth_zpp,fcoll,fcollLya;
 
   x_e = y[0];
   T = y[1];
@@ -413,10 +415,13 @@ void evolveInt(float zp, float curr_delNL0[], double freq_int_heat[],
 	  if (curr_delNL0[zpp_ct]*growth_zpp < 1.5){
         if (curr_delNL0[zpp_ct]*growth_zpp < -1.) {
 		  fcoll = 0;
+      fcollLya = 0;
         }
         else {
           fcoll = gsl_spline_eval(FcollLow_zpp_spline[zpp_ct], log10(curr_delNL0[zpp_ct]*growth_zpp+1.), FcollLow_zpp_spline_acc[zpp_ct]);
           fcoll= pow(10., fcoll);
+          fcollLya = gsl_spline_eval(FcollLowLya_zpp_spline[zpp_ct], log10(curr_delNL0[zpp_ct]*growth_zpp+1.), FcollLowLya_zpp_spline_acc[zpp_ct]);
+          fcollLya = pow(10., fcollLya);
         }
       }
       else {
@@ -425,13 +430,16 @@ void evolveInt(float zp, float curr_delNL0[], double freq_int_heat[],
           // However, such densities should always be collapsed, so just set f_coll to unity. 
           // Additionally, the fraction of points in this regime relative to the entire simulation volume is extremely small.
           splint(Overdense_high_table-1,Fcollz_SFR_high_table[arr_num + zpp_ct]-1,second_derivs_Fcoll_zpp[zpp_ct]-1,NSFR_high,curr_delNL0[zpp_ct]*growth_zpp,&(fcoll));
+          splint(Overdense_high_table-1,FcollzLya_SFR_high_table[arr_num + zpp_ct]-1,second_derivs_FcollLya_zpp[zpp_ct]-1,NSFR_high,curr_delNL0[zpp_ct]*growth_zpp,&(fcollLya));
         }
         else {
           fcoll = 1.;
+          fcollLya = 1.;
         }
       }
       //printf("delta = %.4f, fcoll1 = %.4e, fcoll2 = %.4e\n",Overdensity,fcoll1,fcoll2);
       if (fcoll > 1.) fcoll = 1.;
+      if (fcollLya > 1.) fcollLya = 1.;
 	  // Find Fcoll end ----------------------------------------------------------------------------------
 
 	  /* Instead of dfcoll/dz we compute fcoll/(T_AST*H(z)^-1)*(dt/dz), 
@@ -441,6 +449,7 @@ void evolveInt(float zp, float curr_delNL0[], double freq_int_heat[],
 		*/
 	  //dfcoll = ST_over_PS[zpp_ct]*(double)fcoll*hubble(zpp)/T_AST*dtdz(zpp)*dzpp;
 	  dfcoll = ST_over_PS[zpp_ct]*(double)fcoll*hubble(zpp)/T_AST*fabs(dtdz(zpp))*fabs(dzpp);
+    dfcollLya = ST_over_PS_Lya[zpp_ct]*(double)fcollLya*hubble(zpp)/T_AST*fabs(dtdz(zpp))*fabs(dzpp);
 	}
 	else {
       dfcoll = dfcoll_dz(zpp, sigma_Tmin[zpp_ct], curr_delNL0[zpp_ct], sigma_atR[zpp_ct]);
@@ -453,7 +462,7 @@ void evolveInt(float zp, float curr_delNL0[], double freq_int_heat[],
     dxion_source_dt += zpp_integrand * freq_int_ion[zpp_ct];
     if (COMPUTE_Ts){
       dxlya_dt += zpp_integrand * freq_int_lya[zpp_ct];
-      dstarlya_dt += dfcoll * (1+curr_delNL0[zpp_ct]*dicke(zpp)) * pow(1+zp,2)*(1+zpp)
+      dstarlya_dt += dfcollLya * (1+curr_delNL0[zpp_ct]*dicke(zpp)) * pow(1+zp,2)*(1+zpp)
                      * sum_lyn[zpp_ct];
     }
   }
