@@ -162,13 +162,20 @@ double Mmin_jordan(double z)
     
 }
 
+// just returns 1 if res is > 1
+// useful for fstar and fesc functions
+double maxOne(double res)
+{
+    if(res > 1.0) return 1.0;
+    return res;
+}
+
 // Weighted by the exponential cutoff
 // Check to make sure fstar isn't above one BEFORE applying cutoff
 double fstar_21cmfid(double z, double M)
 {
     double res;
-    res = 0.05 * pow(M / 1.0e10, 0.5);
-    if(res > 1.0) return 1.0 * exp(-5e8 / M);
+    res = maxOne(0.05 * pow(M / 1.0e10, 0.5));
     return res * exp(-5e8 / M);
 }
 
@@ -176,8 +183,7 @@ double fesc_21cmfid(double z, double M)
 {
     double res;
     res = 0.1 * pow(M / 1.0e10, -0.5);
-    if(res > 1.0) return 1.0;
-    return res;
+    return maxOne(res);
 }
 
 double fxDef(double z, double M)
@@ -189,8 +195,19 @@ double fxDef(double z, double M)
 double minMassDef(double z)
 {
     //return 1.0e4;
-    return pow(10.0, -3.0/44.0 * z + 8.4); // quick linear fit to fiducial min mass in log space for testing
+    double res;
+    res = pow(10.0, -3.0/44.0 * z + 8.4); // quick linear fit to fiducial min mass in log space for testing
                                            // will do this right once we make sure everything works
+    if(res > minMassATC(z)) return minMassATC(z);
+    return res;
+}
+
+double minMassDefMom(double z)
+{
+    double res;
+    res = pow(10.0, -1.0/14.0 * z + 60.0/7.0);
+    if(res > minMassATC(z)) return minMassATC(z);
+    return res;
 }
 
 double NionDef(double z, double M)
@@ -201,7 +218,7 @@ double NionDef(double z, double M)
 
 double fstarDef(double z, double M)
 {
-    if(M > minMassATC(z)) return 0.03 * pow(M / 1.0e10, 0.4);
+    if(M > minMassATC(z)) return maxOne(0.03 * pow(M / 1.0e10, 0.4));
     return 0.0005;
 }
 
@@ -224,7 +241,7 @@ double etaSteveEnergy(double z, double M)
 
 double fstarSteveEnergy(double z, double M)
 {
-    return 1.0 / (1.0 + etaSteveEnergy(z, M));
+    return maxOne(1.0 / (1.0 + etaSteveEnergy(z, M)));
 }
 
 double etaSteveMom(double z, double M)
@@ -234,12 +251,18 @@ double etaSteveMom(double z, double M)
 
 double fstarSteveMom(double z, double M)
 {
-    return 1.0 / (1.0 + etaSteveMom(z, M));
+    return maxOne(1.0 / (1.0 + etaSteveMom(z, M)));
 }
 
 double fstarFid(double z, double M)
 {
     if (M > minMassATC(z)) return fstarSteveEnergy(z, M);
+    return 0.005;
+}
+
+double fstarFidMom(double z, double M)
+{
+    if (M > minMassATC(z)) return fstarSteveMom(z, M);
     return 0.005;
 }
 
@@ -253,6 +276,13 @@ double allPopIII(double z)
     return 1;
 }
 
+double PopIII_frac_test(double z)
+{
+    if(z < 20) return 0;
+    if(z > 25) return 1.0;
+    return 0.5;
+}
+
 double minMass_21cmfid(double z) {return 5e8 / 50.0;}
 
 // source functions for comparing with sharp cutoff model
@@ -262,11 +292,46 @@ double fescCutoff(double z, double M) {return 0.1;}
 double fstarCutoff(double z, double M) {return 0.05;}
 double fxCutoff(double z, double M) {return 1.0;}
 
+sources MomPopIII()
+{
+    sources s;
+    s = setSources(fescDef, NionDef, fstarFidMom, fxDef, minMassDefMom, noPopIII);
+    return s;
+}
+
+sources EnergyPopIII()
+{
+    sources s;
+    s = setSources(fescDef, NionDef, fstarFid, fxDef, minMassDef, noPopIII);
+    return s;
+}
+
+sources MomPopII()
+{
+    sources s;
+    s = setSources(fescDef, NionDef, fstarSteveMom, fxDef, minMassATC, noPopIII);
+    return s;
+}
+
+sources EnergyPopII()
+{
+    sources s;
+    s = setSources(fescDef, NionDef, fstarSteveEnergy, fxDef, minMassATC, noPopIII);
+    return s;
+}
+
+sources fid_21cmFAST()
+{
+    sources s;
+    s = setSources(fesc_21cmfid, NionCutoff, fstar_21cmfid, fxCutoff, minMass_21cmfid, noPopIII);
+    return s;
+}
+
 // set the sources here
 sources defaultSources()
 {
     sources s;
-    s = setSources(fesc_21cmfid, NionCutoff, fstar_21cmfid, fxCutoff, minMass_21cmfid, noPopIII);
+    s = MomPopIII();
     return s;
 }
 
